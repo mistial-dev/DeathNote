@@ -136,7 +136,17 @@ window.DeathNote.ui.createSettingElement = function(setting) {
         checkboxInput.className = 'form-check-input';
         checkboxInput.type = 'checkbox';
         checkboxInput.id = `visible-${setting.id}`;
-        checkboxInput.checked = !setting.isAdvanced; // Default based on whether it's advanced
+
+        // Set initial state based on relevancy and visibility rules
+        const initialVisible = window.DeathNote.settings.applySettingVisibilityRules(
+            setting,
+            window.DeathNote.settings.settings[setting.id].visible,
+            window.DeathNote.settings.settings
+        );
+        checkboxInput.checked = initialVisible;
+
+        // Update the settings object to match
+        window.DeathNote.settings.settings[setting.id].visible = initialVisible;
 
         checkboxInput.addEventListener('change', function() {
             window.DeathNote.settings.settings[setting.id].visible = this.checked;
@@ -732,7 +742,6 @@ window.DeathNote.ui.resetSetting = function(settingId) {
     }
 
     // Update the UI for other elements
-    // [Rest of the function remains the same]
     const element = document.getElementById(settingId);
     if (element) {
         if (definition.type === 'boolean') {
@@ -946,66 +955,6 @@ window.DeathNote.ui.calculateFunRating = function() {
     return Math.max(0, Math.min(100, Math.round(funScore)));
 };
 
-// Calculate fun rating (0-100%)
-window.DeathNote.ui.calculateFunRating = function() {
-    const settings = window.DeathNote.settings.settings;
-    let funScore = 80; // Start with a good baseline
-
-    // Factor 1: Player count (higher is more fun to a point)
-    if (settings.maximumPlayers) {
-        if (settings.maximumPlayers.value < 6) {
-            funScore -= (6 - settings.maximumPlayers.value) * 5;
-        } else if (settings.maximumPlayers.value > 8) {
-            funScore += 5; // Bonus for large games
-        }
-    }
-
-    // Factor 2: Movement speed (slightly higher is more fun)
-    if (settings.movementSpeed) {
-        if (settings.movementSpeed.value < 0.8) {
-            funScore -= (0.8 - settings.movementSpeed.value) * 50; // Major penalty for slow movement
-        } else if (settings.movementSpeed.value > 1.0 && settings.movementSpeed.value <= 1.2) {
-            funScore += (settings.movementSpeed.value - 1.0) * 20; // Bonus for slightly faster
-        } else if (settings.movementSpeed.value > 1.2) {
-            funScore -= (settings.movementSpeed.value - 1.2) * 30; // Penalty for too fast
-        }
-    }
-
-    // Factor 3: Role variety
-    if (settings.melloRole && settings.melloRole.value !== "0") {
-        funScore += 5;
-    }
-
-    if (settings.kiraFollowerRole && settings.kiraFollowerRole.value !== "0") {
-        funScore += 5;
-    }
-
-    // Factor 4: Black notebooks (add randomness and fun)
-    if (settings.haveBlackNotebooks && settings.haveBlackNotebooks.value) {
-        funScore += 10;
-    }
-
-    // Factor 5: Task count near ideal is more fun
-    if (settings.numberOfTasks) {
-        const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-        const taskDeviation = Math.abs(settings.numberOfTasks.value - taskCounts.ideal);
-        funScore -= taskDeviation * 5;
-    }
-
-    // Factor 6: Voice chat enabled
-    if (settings.voiceChat && settings.voiceChat.value) {
-        funScore += 10;
-    }
-
-    // Factor 7: Role selection enabled
-    if (settings.roleSelection && settings.roleSelection.value) {
-        funScore += 5;
-    }
-
-    // Clamp result between 0-100
-    return Math.max(0, Math.min(100, Math.round(funScore)));
-};
-
 // Function to generate and update the output in the textbox
 window.DeathNote.ui.updateOutput = function() {
     // Make sure the settings module is available
@@ -1170,14 +1119,10 @@ window.DeathNote.ui.updateOutput = function() {
     }
 
     // Build the output markdown with Discord-friendly formatting and decorative elements
-// Updated segment of the updateOutput function with your preferred format
-// Replace the existing header output code with this improved version
-
-// Build the output markdown with your preferred Discord-friendly format
-// Starting with an empty line for better spacing in Discord
+    // Starting with an empty line for better spacing in Discord
     let output = `_ _\n# ${headerEmoji} **DEATH NOTE: KILLER WITHIN** ${headerEmoji}\n\n`;
 
-// Add each bin to the output (only if it has visible settings)
+    // Add each bin to the output (only if it has visible settings)
     Object.keys(settingsByBin).forEach(bin => {
         const binSettings = settingsByBin[bin];
 

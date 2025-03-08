@@ -32,16 +32,14 @@ window.DeathNote.settings.VISIBILITY_RULES = {
 
 // Define the settings bins/categories
 window.DeathNote.settings.BINS = {
-    LOBBY: "Lobby Settings",
-    PLAYER: "Player",
-    GAMEPLAY: "Gameplay"
+    LOBBY: "Lobby Settings", PLAYER: "Player", GAMEPLAY: "Gameplay"
 };
 
 // Create a settings object to track current values and visibility
 window.DeathNote.settings.settings = {};
 
 // Function to calculate ideal task count based on other settings
-window.DeathNote.settings.calculateIdealTaskCount = function(settings) {
+window.DeathNote.settings.calculateIdealTaskCount = function (settings) {
     // Extract values from settings
     const roundTime = settings.dayNightSeconds.value;
     const movementSpeed = settings.movementSpeed.value;
@@ -61,15 +59,12 @@ window.DeathNote.settings.calculateIdealTaskCount = function(settings) {
     const idealTaskCount = Math.ceil((easyTaskCount + hardTaskCount) / 2);
 
     return {
-        easy: easyTaskCount,
-        hard: hardTaskCount,
-        ideal: idealTaskCount
+        easy: easyTaskCount, hard: hardTaskCount, ideal: idealTaskCount
     };
 };
 
 // Define all settings
-window.DeathNote.settings.settingsDefinitions = [
-    // Lobby Settings
+window.DeathNote.settings.settingsDefinitions = [// Lobby Settings
     {
         id: "lobbyCode",
         name: "Lobby Code",
@@ -83,8 +78,7 @@ window.DeathNote.settings.settingsDefinitions = [
         relevancyFunction: () => 0.7, // Always show as critical
         canHide: false, // Cannot be hidden
         isAdvanced: false
-    },
-    {
+    }, {
         id: "lobbyRegion",
         name: "Lobby Region",
         description: "Server region for the lobby",
@@ -95,8 +89,7 @@ window.DeathNote.settings.settingsDefinitions = [
         relevancyFunction: (value) => value === "America (East)" ? 0.3 : 0.8, // Highlight non-default regions
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "lobbyPrivacy",
         name: "Lobby Privacy",
         description: "Privacy settings for the lobby",
@@ -107,8 +100,7 @@ window.DeathNote.settings.settingsDefinitions = [
         relevancyFunction: () => 0.7, // Always important
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "roleSelection",
         name: "Role Selection",
         description: "If enabled, players can select a role prior to game start",
@@ -118,17 +110,17 @@ window.DeathNote.settings.settingsDefinitions = [
         relevancyFunction: () => 0.7, // Always important
         canHide: false, // Always shown
         isAdvanced: false
-    },
-    {
+    }, {
         id: "allowedPlayerType",
         name: "Allowed Player Type",
         description: "Which platforms are allowed to join the lobby",
         bin: window.DeathNote.settings.BINS.LOBBY,
         type: "checkbox-group",
-        options: [
-            { id: "pcAllowed", label: "PC", defaultValue: true },
-            { id: "ps4Allowed", label: "PS4", defaultValue: true }
-        ],
+        options: [{id: "pcAllowed", label: "PC", defaultValue: true}, {
+            id: "ps4Allowed",
+            label: "PS4",
+            defaultValue: true
+        }],
         relevancyFunction: (value, allSettings) => {
             // High relevancy if either platform is disabled
             if (!allSettings.pcAllowed.value || !allSettings.ps4Allowed.value) {
@@ -138,8 +130,7 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: true // Changed to true to make it an advanced setting
-    },
-    {
+    }, {
         id: "voiceChat",
         name: "Voice Chat",
         description: "If enabled, players are permitted to use voice chat",
@@ -158,11 +149,7 @@ window.DeathNote.settings.settingsDefinitions = [
         description: "Number of players permitted to assume the Mello role",
         bin: window.DeathNote.settings.BINS.PLAYER,
         type: "radio",
-        options: [
-            { value: "0", label: "0 (Disabled)" },
-            { value: "1", label: "1" },
-            { value: "random", label: "Random" }
-        ],
+        options: [{value: "0", label: "0 (Disabled)"}, {value: "1", label: "1"}, {value: "random", label: "Random"}],
         defaultValue: "1",
         relevancyFunction: (value) => {
             if (value === "0") return 1.0; // Extremely relevant when disabled
@@ -172,18 +159,13 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "kiraFollowerRole",
         name: "Available Roles (Kira Follower)",
         description: "Number of players permitted to assume the Kira Follower role",
         bin: window.DeathNote.settings.BINS.PLAYER,
         type: "radio",
-        options: [
-            { value: "0", label: "0 (Disabled)" },
-            { value: "1", label: "1" },
-            { value: "random", label: "Random" }
-        ],
+        options: [{value: "0", label: "0 (Disabled)"}, {value: "1", label: "1"}, {value: "random", label: "Random"}],
         defaultValue: "1",
         relevancyFunction: (value) => {
             if (value === "0") return 1.0; // Extremely relevant when disabled
@@ -193,8 +175,7 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "movementSpeed",
         name: "Movement Speed",
         description: "Speed multiplier for player movement",
@@ -203,8 +184,7 @@ window.DeathNote.settings.settingsDefinitions = [
         min: 0.5,
         max: 1.5,
         step: 0.1,
-        defaultValue: 1.0,
-        // Lower speeds are very disliked, as are very high speeds
+        defaultValue: 1.0, // Lower speeds are very disliked, as are very high speeds
         relevancyFunction: (value) => {
             if (value === 1.0) return 0.0; // Never show default value
             // Formula: Clamp(2.857 * Math.abs(x - 1.05), 0, 1)
@@ -212,8 +192,7 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: true // Move to advanced settings
-    },
-    {
+    }, {
         id: "maximumPlayers",
         name: "Maximum Players",
         description: "Maximum number of players for the room",
@@ -222,8 +201,7 @@ window.DeathNote.settings.settingsDefinitions = [
         min: 4,
         max: 10,
         step: 1,
-        defaultValue: 10,
-        // Formula: Clamp(1.6 * 2^(-(x - 5)))
+        defaultValue: 10, // Formula: Clamp(1.6 * 2^(-(x - 5)))
         relevancyFunction: (value, allSettings) => {
             if (value === 10) return 0.0; // Never show default value
 
@@ -255,16 +233,14 @@ window.DeathNote.settings.settingsDefinitions = [
         min: 1,
         max: 8,
         step: 1,
-        defaultValue: 2,
-        // Formula: Clamp(1.0 * |N - T_ideal|^2, 0, 1)
+        defaultValue: 2, // Formula: Clamp(1.0 * |N - T_ideal|^2, 0, 1)
         relevancyFunction: (value, allSettings) => {
             const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(allSettings);
             return Math.min(1.0, Math.max(0.0, 1.0 * Math.pow(Math.abs(value - taskCounts.ideal), 2)));
         },
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "numberOfInputs",
         name: "Number of Inputs",
         description: "Number of inputs required to complete a task",
@@ -273,15 +249,13 @@ window.DeathNote.settings.settingsDefinitions = [
         min: 1,
         max: 5,
         step: 1,
-        defaultValue: 2,
-        // Formula: Clamp(0.5 * |x - 3|^2, 0, 1)
+        defaultValue: 2, // Formula: Clamp(0.5 * |x - 3|^2, 0, 1)
         relevancyFunction: (value) => {
             return Math.min(1.0, Math.max(0.0, 0.5 * Math.pow(Math.abs(value - 3), 2)));
         },
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "dayNightSeconds",
         name: "Day/Night Seconds",
         description: "Number of seconds of gameplay in both day and night sections",
@@ -290,8 +264,7 @@ window.DeathNote.settings.settingsDefinitions = [
         min: 30,
         max: 120,
         step: 15,
-        defaultValue: 45,
-        // Formula: Clamp(Math.exp(-0.0341 * (x - 30)) + 0.1)
+        defaultValue: 45, // Formula: Clamp(Math.exp(-0.0341 * (x - 30)) + 0.1)
         relevancyFunction: (value) => {
             if (value === 45) return 0.2; // Lower relevancy when at default
             if (value <= 30) return 1.0; // Always show shortest value
@@ -301,8 +274,7 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "haveBlackNotebooks",
         name: "[All Players] Have Black Notebooks",
         description: "If enabled, all players have black notebooks",
@@ -312,8 +284,7 @@ window.DeathNote.settings.settingsDefinitions = [
         relevancyFunction: (value) => value ? 1.0 : 0.0, // Only show when enabled, never show when disabled
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "canvasTasks",
         name: "Canvas Tasks",
         description: "If enabled, Team Kira can perform canvas tasks and gather intelligence by interacting with NPCs",
@@ -323,8 +294,7 @@ window.DeathNote.settings.settingsDefinitions = [
         relevancyFunction: (value) => value ? 0.1 : 1.0, // Highlight when disabled
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "maximumCriminalJudgments",
         name: "Maximum Criminal Judgments",
         description: "Maximum number of criminals Kira can judge (kill) per round",
@@ -337,8 +307,7 @@ window.DeathNote.settings.settingsDefinitions = [
         relevancyFunction: (value) => value === 5 ? 0.1 : 0.7, // Default is less relevant
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "meetingSeconds",
         name: "Meeting Seconds",
         description: "Maximum seconds that players have to vote for Kira suspect",
@@ -347,8 +316,7 @@ window.DeathNote.settings.settingsDefinitions = [
         min: 30,
         max: 240,
         step: 15,
-        defaultValue: 150,
-        // Formula: 0.5 * (60 / x) + 0.004 * (x - 150)
+        defaultValue: 150, // Formula: 0.5 * (60 / x) + 0.004 * (x - 150)
         relevancyFunction: (value) => {
             // Lower relevancy for default or near-default values
             if (value >= 135 && value <= 165) return 0.15;
@@ -359,8 +327,7 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: false
-    },
-    {
+    }, {
         id: "kiraProgressMultiplier",
         name: "Kira Progress Multiplier (New World Progress)",
         description: "Multiplier for Team Kira's New World Progress per criminal judged",
@@ -378,8 +345,7 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: true // Advanced setting
-    },
-    {
+    }, {
         id: "teamLProgressMultiplier",
         name: "Team L Investigation Progress Multiplier",
         description: "Multiplier for Team L's Investigation Progress per task completed",
@@ -397,16 +363,14 @@ window.DeathNote.settings.settingsDefinitions = [
         },
         canHide: true,
         isAdvanced: true // Advanced setting
-    }
-];
+    }];
 
 // Initialize settings with defaults
-window.DeathNote.settings.initializeSettings = function() {
+window.DeathNote.settings.initializeSettings = function () {
     // First pass: initialize all main settings
     window.DeathNote.settings.settingsDefinitions.forEach(definition => {
         window.DeathNote.settings.settings[definition.id] = {
-            value: definition.defaultValue,
-            relevancyScore: 0, // Will be calculated
+            value: definition.defaultValue, relevancyScore: 0, // Will be calculated
             visible: !definition.isAdvanced, // Default visibility based on whether it's an advanced setting
             manuallySet: false // Track if user has manually set visibility
         };
@@ -415,10 +379,8 @@ window.DeathNote.settings.initializeSettings = function() {
         if (definition.type === 'checkbox-group' && Array.isArray(definition.options)) {
             definition.options.forEach(option => {
                 window.DeathNote.settings.settings[option.id] = {
-                    value: option.defaultValue,
-                    relevancyScore: 0, // Will be calculated
-                    visible: !definition.isAdvanced,
-                    manuallySet: false
+                    value: option.defaultValue, relevancyScore: 0, // Will be calculated
+                    visible: !definition.isAdvanced, manuallySet: false
                 };
             });
         }
@@ -429,7 +391,7 @@ window.DeathNote.settings.initializeSettings = function() {
 };
 
 // Function to update URL hash with current settings
-window.DeathNote.settings.updateUrlHash = function() {
+window.DeathNote.settings.updateUrlHash = function () {
     // Skip this when initializing from the hash
     if (window.ignoreHashUpdate) {
         return;
@@ -459,7 +421,7 @@ window.DeathNote.settings.updateUrlHash = function() {
 };
 
 // Function to parse settings from URL hash
-window.DeathNote.settings.loadSettingsFromHash = function() {
+window.DeathNote.settings.loadSettingsFromHash = function () {
     if (!window.location.hash) {
         return false;
     }
@@ -496,11 +458,11 @@ window.DeathNote.settings.loadSettingsFromHash = function() {
 };
 
 // Function to setup the Copy Link button
-window.DeathNote.settings.setupCopyLinkButton = function() {
+window.DeathNote.settings.setupCopyLinkButton = function () {
     // Add event listener for the Copy Link button
     const copyLinkBtn = document.getElementById('copy-link-btn');
     if (copyLinkBtn) {
-        copyLinkBtn.addEventListener('click', function() {
+        copyLinkBtn.addEventListener('click', function () {
             // Make sure the hash is up to date
             window.DeathNote.settings.updateUrlHash();
 
@@ -528,7 +490,7 @@ window.DeathNote.settings.setupCopyLinkButton = function() {
 };
 
 // Add event listeners to all settings to update the hash when changed
-window.DeathNote.settings.setupHashUpdateListeners = function() {
+window.DeathNote.settings.setupHashUpdateListeners = function () {
     window.DeathNote.settings.settingsDefinitions.forEach(definition => {
         const element = document.getElementById(definition.id);
         if (element) {
@@ -559,8 +521,67 @@ window.DeathNote.settings.setupHashUpdateListeners = function() {
     });
 };
 
+// Add event listeners to all inputs to update visibility checkboxes when values change
+window.DeathNote.settings.setupVisibilitySyncListeners = function () {
+    window.DeathNote.settings.settingsDefinitions.forEach(definition => {
+        const element = document.getElementById(definition.id);
+        if (element) {
+            const updateCheckboxes = () => {
+                // Recalculate relevancy scores
+                window.DeathNote.settings.updateRelevancyScores();
+
+                // Reset manuallySet flag when the value changes
+                window.DeathNote.settings.settings[definition.id].manuallySet = false;
+
+                // Sync the checkbox
+                window.DeathNote.settings.syncVisibilityCheckbox(definition.id);
+            };
+
+            if (definition.type === 'boolean') {
+                element.addEventListener('change', updateCheckboxes);
+            } else if (definition.type === 'range') {
+                element.addEventListener('input', updateCheckboxes);
+            } else {
+                element.addEventListener('change', updateCheckboxes);
+            }
+        } else if (definition.type === 'radio') {
+            // For radio buttons, we need to attach to each option
+            definition.options.forEach(option => {
+                const radioBtn = document.getElementById(`${definition.id}-${option.value}`);
+                if (radioBtn) {
+                    radioBtn.addEventListener('change', () => {
+                        // Reset manuallySet flag when the value changes
+                        window.DeathNote.settings.settings[definition.id].manuallySet = false;
+
+                        // Recalculate relevancy scores and sync
+                        window.DeathNote.settings.updateRelevancyScores();
+                        window.DeathNote.settings.syncVisibilityCheckbox(definition.id);
+                    });
+                }
+            });
+        } else if (definition.type === 'checkbox-group') {
+            // For checkbox groups, attach to each option
+            definition.options.forEach(option => {
+                const checkbox = document.getElementById(option.id);
+                if (checkbox) {
+                    checkbox.addEventListener('change', () => {
+                        // Reset manuallySet flag when the value changes
+                        if (window.DeathNote.settings.settings[option.id]) {
+                            window.DeathNote.settings.settings[option.id].manuallySet = false;
+                        }
+
+                        // Recalculate relevancy scores and sync
+                        window.DeathNote.settings.updateRelevancyScores();
+                        window.DeathNote.settings.syncVisibilityCheckbox(option.id);
+                    });
+                }
+            });
+        }
+    });
+};
+
 // Function to update relevancy scores for all settings
-window.DeathNote.settings.updateRelevancyScores = function() {
+window.DeathNote.settings.updateRelevancyScores = function () {
     window.DeathNote.settings.settingsDefinitions.forEach(definition => {
         // Skip if manually set by checkbox
         if (window.DeathNote.settings.settings[definition.id]?.manuallySet) {
@@ -588,7 +609,7 @@ window.DeathNote.settings.updateRelevancyScores = function() {
             definition.options.forEach(option => {
                 if (!window.DeathNote.settings.settings[option.id].manuallySet) {
                     window.DeathNote.settings.settings[option.id].relevancyScore = relevancyScore;
-                    window.DeathNote.settings.settings[option.id].visible = !definition.isAdvanced;
+                    window.DeathNote.settings.settings[option.id].visible = relevancyScore > 0.3; // Use a threshold to determine visibility
                 }
             });
         } else {
@@ -597,17 +618,15 @@ window.DeathNote.settings.updateRelevancyScores = function() {
 
             // Update the score
             window.DeathNote.settings.settings[definition.id].relevancyScore = relevancyScore;
-        }
 
-        // Update checkbox state based on relevancy
-        const checkboxEl = document.getElementById(`visible-${definition.id}`);
-        if (checkboxEl && !window.DeathNote.settings.settings[definition.id].manuallySet) {
-            // For zero relevancy items, uncheck the box
-            if (window.DeathNote.settings.settings[definition.id].relevancyScore === 0.0 && definition.canHide) {
-                checkboxEl.checked = false;
-                window.DeathNote.settings.settings[definition.id].visible = false;
+            // Update visibility based on relevancy if not manually set
+            if (!window.DeathNote.settings.settings[definition.id].manuallySet) {
+                window.DeathNote.settings.settings[definition.id].visible = relevancyScore > 0.3;
             }
         }
+
+        // Sync checkbox state with the setting's visibility
+        this.syncVisibilityCheckbox(definition.id);
     });
 
     // Special case: make Number of Inputs = 2 less likely to show up when other settings change
@@ -624,12 +643,40 @@ window.DeathNote.settings.updateRelevancyScores = function() {
         // Reduce relevancy based on how many other non-default settings exist
         if (nonDefaultCount > 2) {
             window.DeathNote.settings.settings.numberOfInputs.relevancyScore = Math.max(0.05, window.DeathNote.settings.settings.numberOfInputs.relevancyScore - 0.1 * nonDefaultCount);
+            // Update visibility based on new relevancy score
+            if (!window.DeathNote.settings.settings.numberOfInputs.manuallySet) {
+                window.DeathNote.settings.settings.numberOfInputs.visible = window.DeathNote.settings.settings.numberOfInputs.relevancyScore > 0.3;
+                this.syncVisibilityCheckbox('numberOfInputs');
+            }
         }
     }
 };
 
-// Apply hash settings after UI generation
-window.DeathNote.settings.applyPendingHashSettings = function() {
+// New helper function to sync a checkbox state with the corresponding setting's visibility
+window.DeathNote.settings.syncVisibilityCheckbox = function (settingId) {
+    const checkboxEl = document.getElementById(`visible-${settingId}`);
+    const setting = window.DeathNote.settings.settings[settingId];
+
+    if (checkboxEl && setting) {
+        const definition = window.DeathNote.settings.settingsDefinitions.find(def => def.id === settingId);
+
+        if (!definition) return;
+
+        // First determine if we should show the setting based on rules
+        const shouldBeVisible = window.DeathNote.settings.applySettingVisibilityRules(definition, setting.visible, window.DeathNote.settings.settings);
+
+        // Now update the checkbox to match
+        checkboxEl.checked = shouldBeVisible;
+
+        // Also update the setting's visibility to match
+        if (!setting.manuallySet) {
+            setting.visible = shouldBeVisible;
+        }
+    }
+};
+
+// Apply pending hash settings after UI generation
+window.DeathNote.settings.applyPendingHashSettings = function () {
     if (!window.DeathNote.settings.pendingHashSettings) {
         return;
     }
@@ -668,7 +715,7 @@ window.DeathNote.settings.applyPendingHashSettings = function() {
                 if (radioBtn) {
                     console.log(`Found radio button with delayed search: ${radioBtn.id}`);
                     radioBtn.checked = true;
-                    radioBtn.dispatchEvent(new Event('change', { bubbles: true }));
+                    radioBtn.dispatchEvent(new Event('change', {bubbles: true}));
                 } else {
                     console.error(`Still could not find radio button for ${key} with value ${hashSettings[key]}`);
                 }
@@ -690,63 +737,51 @@ window.DeathNote.settings.applyPendingHashSettings = function() {
  * @param {Object} settings - The current settings object
  * @returns {boolean} - The new visibility state
  */
-window.DeathNote.settings.applySettingVisibilityRules = function(definition, isVisible, settings) {
+window.DeathNote.settings.applySettingVisibilityRules = function (definition, isVisible, settings) {
     const VISIBILITY_RULES = window.DeathNote.settings.VISIBILITY_RULES;
 
     // Always hide movement speed at default value
-    if (VISIBILITY_RULES.ALWAYS_HIDE_DEFAULT_MOVEMENT_SPEED &&
-        definition.id === "movementSpeed" && settings[definition.id].value === 1.0) {
+    if (VISIBILITY_RULES.ALWAYS_HIDE_DEFAULT_MOVEMENT_SPEED && definition.id === "movementSpeed" && settings[definition.id].value === 1.0) {
         return false;
     }
 
     // Always hide maximum players at default value
-    if (VISIBILITY_RULES.ALWAYS_HIDE_DEFAULT_MAX_PLAYERS &&
-        definition.id === "maximumPlayers" && settings[definition.id].value === 10) {
+    if (VISIBILITY_RULES.ALWAYS_HIDE_DEFAULT_MAX_PLAYERS && definition.id === "maximumPlayers" && settings[definition.id].value === 10) {
         return false;
     }
 
     // Always hide black notebooks when disabled
-    if (VISIBILITY_RULES.ALWAYS_HIDE_DISABLED_BLACK_NOTEBOOKS &&
-        definition.id === "haveBlackNotebooks" && !settings[definition.id].value) {
+    if (VISIBILITY_RULES.ALWAYS_HIDE_DISABLED_BLACK_NOTEBOOKS && definition.id === "haveBlackNotebooks" && !settings[definition.id].value) {
         return false;
     }
 
     // Hide default role settings
-    if (VISIBILITY_RULES.HIDE_DEFAULT_ROLE_SETTINGS &&
-        (definition.id === "melloRole" || definition.id === "kiraFollowerRole") &&
-        settings[definition.id].value === "1") {
+    if (VISIBILITY_RULES.HIDE_DEFAULT_ROLE_SETTINGS && (definition.id === "melloRole" || definition.id === "kiraFollowerRole") && settings[definition.id].value === "1") {
         return false;
     }
 
     // Hide voice chat when enabled (default)
-    if (VISIBILITY_RULES.HIDE_ENABLED_VOICE_CHAT &&
-        definition.id === "voiceChat" && settings[definition.id].value === true) {
+    if (VISIBILITY_RULES.HIDE_ENABLED_VOICE_CHAT && definition.id === "voiceChat" && settings[definition.id].value === true) {
         return false;
     }
 
     // Hide canvas tasks when enabled (default)
-    if (VISIBILITY_RULES.HIDE_ENABLED_CANVAS_TASKS &&
-        definition.id === "canvasTasks" && settings[definition.id].value === true) {
+    if (VISIBILITY_RULES.HIDE_ENABLED_CANVAS_TASKS && definition.id === "canvasTasks" && settings[definition.id].value === true) {
         return false;
     }
 
     // Hide progress multipliers at default value
-    if (VISIBILITY_RULES.HIDE_DEFAULT_PROGRESS_MULTIPLIERS &&
-        (definition.id === "kiraProgressMultiplier" || definition.id === "teamLProgressMultiplier") &&
-        settings[definition.id].value === 1.0) {
+    if (VISIBILITY_RULES.HIDE_DEFAULT_PROGRESS_MULTIPLIERS && (definition.id === "kiraProgressMultiplier" || definition.id === "teamLProgressMultiplier") && settings[definition.id].value === 1.0) {
         return false;
     }
 
     // Hide day/night seconds at default unless otherwise specified
-    if (VISIBILITY_RULES.HIDE_DEFAULT_DAY_NIGHT_SECONDS &&
-        definition.id === "dayNightSeconds" && settings[definition.id].value === 45 &&
-        settings[definition.id].relevancyScore < 0.4) {
+    if (VISIBILITY_RULES.HIDE_DEFAULT_DAY_NIGHT_SECONDS && definition.id === "dayNightSeconds" && settings[definition.id].value === 45 && settings[definition.id].relevancyScore < 0.4) {
         return false;
     }
 
     // Hide default region
-    if (VISIBILITY_RULES.HIDE_DEFAULT_REGION &&
-        definition.id === "lobbyRegion" && settings[definition.id].value === "America (East)") {
+    if (VISIBILITY_RULES.HIDE_DEFAULT_REGION && definition.id === "lobbyRegion" && settings[definition.id].value === "America (East)") {
         return false;
     }
 
@@ -761,12 +796,11 @@ window.DeathNote.settings.applySettingVisibilityRules = function(definition, isV
  * @param {Object} settings - The current settings object
  * @returns {*} - The formatted display value
  */
-window.DeathNote.settings.getSettingDisplayValue = function(definition, settings) {
+window.DeathNote.settings.getSettingDisplayValue = function (definition, settings) {
     const VISIBILITY_RULES = window.DeathNote.settings.VISIBILITY_RULES;
 
     // Special case for Role Selection to capitalize False
-    if (VISIBILITY_RULES.CAPITALIZE_FALSE_ROLE_SELECTION &&
-        definition.id === "roleSelection" && settings[definition.id].value === false) {
+    if (VISIBILITY_RULES.CAPITALIZE_FALSE_ROLE_SELECTION && definition.id === "roleSelection" && settings[definition.id].value === false) {
         return "FALSE";
     }
 
@@ -780,7 +814,7 @@ window.DeathNote.settings.getSettingDisplayValue = function(definition, settings
  * @param {Object} settingsByBin - Object containing settings organized by bin
  * @param {Object} settings - The current settings object
  */
-window.DeathNote.settings.processSpecialSettingGroups = function(settingsByBin, settings) {
+window.DeathNote.settings.processSpecialSettingGroups = function (settingsByBin, settings) {
     // Handle special case for Allowed Player Type
     const allowedPlayerType = window.DeathNote.settings.settingsDefinitions.find(def => def.id === "allowedPlayerType");
     if (allowedPlayerType) {
@@ -799,10 +833,7 @@ window.DeathNote.settings.processSpecialSettingGroups = function(settingsByBin, 
             }
 
             settingsByBin[allowedPlayerType.bin].push({
-                id: "allowedPlayerType",
-                name: "Allowed Player Type",
-                value: platformText,
-                relevancyScore: 1.0 // Always high relevancy when restricted
+                id: "allowedPlayerType", name: "Allowed Player Type", value: platformText, relevancyScore: 1.0 // Always high relevancy when restricted
             });
         }
     }
@@ -811,7 +842,7 @@ window.DeathNote.settings.processSpecialSettingGroups = function(settingsByBin, 
 };
 
 // Register this module as ready when the DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log("Settings module loaded");
     if (window.DeathNote && window.DeathNote.registerModule) {
         window.DeathNote.registerModule('settings');

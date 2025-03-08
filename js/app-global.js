@@ -45,6 +45,9 @@ window.DeathNote.init = function() {
             this.settings.setupHashUpdateListeners();
             this.ui.setupRadioButtonSyncEvents();
 
+            // Setup visibility syncing (NEW)
+            this.settings.setupVisibilitySyncListeners();
+
             // IMPORTANT: Apply hash settings after UI is generated
             if (hasLoadedSettings) {
                 this.settings.applyPendingHashSettings();
@@ -57,6 +60,11 @@ window.DeathNote.init = function() {
 
             // Initialize ratings display
             this.updateRatingDisplays();
+
+            // Force a sync of all visibility checkboxes (NEW)
+            this.settings.settingsDefinitions.forEach(def => {
+                this.settings.syncVisibilityCheckbox(def.id);
+            });
 
             this.initialized = true;
             console.log("DeathNote initialization completed");

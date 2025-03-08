@@ -111,20 +111,6 @@ window.DeathNote.recommendations.recommendations = [
         }
     },
 
-    // Recommendation 5: Kira Without a Follower
-    {
-        id: "noKiraFollower",
-        condition: (settings) => {
-            return settings.kiraFollowerRole && settings.kiraFollowerRole.value === "0";
-        },
-        message: (settings) => {
-            // Red warning if >= 6 players, regular otherwise
-            const isHighPlayerCount = settings.maximumPlayers && settings.maximumPlayers.value >= 6;
-            const colorStyle = isHighPlayerCount ? "color: #721c24;" : "";
-            return `<span style='${colorStyle}'>Poor Kira has no sidekick! 😢 Even evil masterminds need a friend. ${isHighPlayerCount ? 'With ' + settings.maximumPlayers.value + ' players, Kira\'s gonna have a harder time than L at a cake-eating contest.' : 'Players might ghost the lobby faster than Mikami abandons a losing battle!'} Consider adding a Follower?</span>`;
-        }
-    },
-
     // Recommendation 6: Short Rounds with High Inputs
     {
         id: "shortRoundsHighInputs",
