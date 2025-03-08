@@ -803,6 +803,117 @@ window.DeathNote.ui.resetSetting = function(settingId) {
     window.DeathNote.recommendations.updateRecommendations();
 };
 
+// Calculate game balance rating (0-100%)
+window.DeathNote.ui.calculateGameBalanceRating = function() {
+    const settings = window.DeathNote.settings.settings;
+    let balanceScore = 100; // Start with perfect balance
+
+    // Factor 1: Unbalanced progress multipliers
+    if (settings.kiraProgressMultiplier && settings.teamLProgressMultiplier) {
+        const progressDifference = Math.abs(settings.kiraProgressMultiplier.value - settings.teamLProgressMultiplier.value);
+        // Deduct up to 30 points for unbalanced progress
+        balanceScore -= progressDifference * 60;
+    }
+
+    // Factor 2: Missing key roles
+    if (settings.melloRole && settings.melloRole.value === "0") {
+        balanceScore -= 15;
+    }
+
+    if (settings.kiraFollowerRole && settings.kiraFollowerRole.value === "0") {
+        balanceScore -= 15;
+    }
+
+    // Factor 3: Extreme movement speed
+    if (settings.movementSpeed) {
+        const speedDeviation = Math.abs(settings.movementSpeed.value - 1.0);
+        // Deduct up to 15 points for extreme speeds
+        balanceScore -= speedDeviation * 30;
+    }
+
+    // Factor 4: Too few/many tasks relative to ideal
+    if (settings.numberOfTasks) {
+        const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+        const taskDeviation = Math.abs(settings.numberOfTasks.value - taskCounts.ideal) / taskCounts.ideal;
+        // Deduct up to 20 points for task imbalance
+        balanceScore -= taskDeviation * 40;
+    }
+
+    // Factor 5: Canvas tasks disabled
+    if (settings.canvasTasks && !settings.canvasTasks.value) {
+        balanceScore -= 10;
+    }
+
+    // Factor 6: Black notebooks with high criminal judgments
+    if (settings.haveBlackNotebooks && settings.haveBlackNotebooks.value &&
+        settings.maximumCriminalJudgments && settings.maximumCriminalJudgments.value > 6) {
+        balanceScore -= 15;
+    }
+
+    // Clamp result between 0-100
+    return Math.max(0, Math.min(100, Math.round(balanceScore)));
+};
+
+// Calculate fun rating (0-100%)
+window.DeathNote.ui.calculateFunRating = function() {
+    const settings = window.DeathNote.settings.settings;
+    let funScore = 80; // Start with a good baseline
+
+    // Factor 1: Player count (higher is more fun to a point)
+    if (settings.maximumPlayers) {
+        if (settings.maximumPlayers.value < 6) {
+            funScore -= (6 - settings.maximumPlayers.value) * 5;
+        } else if (settings.maximumPlayers.value > 8) {
+            funScore += 5; // Bonus for large games
+        }
+    }
+
+    // Factor 2: Movement speed (slightly higher is more fun)
+    if (settings.movementSpeed) {
+        if (settings.movementSpeed.value < 0.8) {
+            funScore -= (0.8 - settings.movementSpeed.value) * 50; // Major penalty for slow movement
+        } else if (settings.movementSpeed.value > 1.0 && settings.movementSpeed.value <= 1.2) {
+            funScore += (settings.movementSpeed.value - 1.0) * 20; // Bonus for slightly faster
+        } else if (settings.movementSpeed.value > 1.2) {
+            funScore -= (settings.movementSpeed.value - 1.2) * 30; // Penalty for too fast
+        }
+    }
+
+    // Factor 3: Role variety
+    if (settings.melloRole && settings.melloRole.value !== "0") {
+        funScore += 5;
+    }
+
+    if (settings.kiraFollowerRole && settings.kiraFollowerRole.value !== "0") {
+        funScore += 5;
+    }
+
+    // Factor 4: Black notebooks (add randomness and fun)
+    if (settings.haveBlackNotebooks && settings.haveBlackNotebooks.value) {
+        funScore += 10;
+    }
+
+    // Factor 5: Task count near ideal is more fun
+    if (settings.numberOfTasks) {
+        const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+        const taskDeviation = Math.abs(settings.numberOfTasks.value - taskCounts.ideal);
+        funScore -= taskDeviation * 5;
+    }
+
+    // Factor 6: Voice chat enabled
+    if (settings.voiceChat && settings.voiceChat.value) {
+        funScore += 10;
+    }
+
+    // Factor 7: Role selection enabled
+    if (settings.roleSelection && settings.roleSelection.value) {
+        funScore += 5;
+    }
+
+    // Clamp result between 0-100
+    return Math.max(0, Math.min(100, Math.round(funScore)));
+};
+
 // Function to generate and update the output in the textbox
 window.DeathNote.ui.updateOutput = function() {
     // Make sure the settings module is available
@@ -889,14 +1000,15 @@ window.DeathNote.ui.updateOutput = function() {
             return;
         }
 
-        // Update checkbox state to reflect calculated visibility
+        // Update checkbox state based on relevancy
         const checkboxEl = document.getElementById(`visible-${definition.id}`);
         if (checkboxEl && !window.DeathNote.settings.settings[definition.id].manuallySet) {
-            checkboxEl.checked = isVisible;
+            // For zero relevancy items, uncheck the box
+            if (window.DeathNote.settings.settings[definition.id].relevancyScore === 0.0 && definition.canHide) {
+                checkboxEl.checked = false;
+                window.DeathNote.settings.settings[definition.id].visible = false;
+            }
         }
-
-        // Save visibility status in settings object
-        window.DeathNote.settings.settings[definition.id].visible = isVisible;
 
         // Only add visible settings to the output bins
         if (isVisible) {
@@ -920,44 +1032,110 @@ window.DeathNote.ui.updateOutput = function() {
         settingsByBin[bin].sort((a, b) => b.relevancyScore - a.relevancyScore);
     });
 
-    // Build the output markdown
-    let output = `# Death Note: Killer Within Lobby\n\n`;
+    // Define emojis for each setting type using Discord emoji codes
+    const settingEmojis = {
+        lobbyCode: ":label:",
+        lobbyRegion: ":earth_americas:",
+        lobbyPrivacy: ":lock:",
+        roleSelection: ":busts_in_silhouette:",
+        pcAllowed: ":desktop:",
+        ps4Allowed: ":video_game:",
+        voiceChat: ":microphone2:",
+        melloRole: ":mag:",
+        kiraFollowerRole: ":notebook_with_decorative_cover:",
+        movementSpeed: ":runner:",
+        maximumPlayers: ":family:",
+        numberOfTasks: ":clipboard:",
+        numberOfInputs: ":keyboard:",
+        dayNightSeconds: ":hourglass:",
+        haveBlackNotebooks: ":black_large_square:",
+        canvasTasks: ":art:",
+        maximumCriminalJudgments: ":scales:",
+        meetingSeconds: ":speaking_head:",
+        kiraProgressMultiplier: ":chart_with_upwards_trend:",
+        teamLProgressMultiplier: ":detective:",
+        allowedPlayerType: ":game_die:"
+    };
 
-    // Add each bin to the output (only if it has visible settings)
+    // Determine header theme based on settings
+    let headerEmoji = ":notepad_spiral:";
+    let headerDecoration = "═════════════════════════";
+
+    const balanceRating = window.DeathNote.ui.calculateGameBalanceRating();
+    const funRating = window.DeathNote.ui.calculateFunRating();
+
+    // Choose appropriate header based on balance/fun
+    if (funRating >= 90) {
+        headerEmoji = ":fire:";
+        headerDecoration = "━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    } else if (balanceRating < 60) {
+        headerEmoji = ":warning:";
+        headerDecoration = "⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️";
+    } else if (window.DeathNote.settings.settings.melloRole?.value === "0" ||
+        window.DeathNote.settings.settings.kiraFollowerRole?.value === "0") {
+        headerEmoji = ":warning:";
+        headerDecoration = "❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗";
+    }
+
+    // Build the output markdown with Discord-friendly formatting and decorative elements
+// Updated segment of the updateOutput function with your preferred format
+// Replace the existing header output code with this improved version
+
+// Build the output markdown with your preferred Discord-friendly format
+// Starting with an empty line for better spacing in Discord
+    let output = `_ _\n# ${headerEmoji} **DEATH NOTE: KILLER WITHIN** ${headerEmoji}\n\n`;
+
+// Add each bin to the output (only if it has visible settings)
     Object.keys(settingsByBin).forEach(bin => {
         const binSettings = settingsByBin[bin];
 
         if (binSettings.length > 0) {
+            // Add section divider for non-lobby sections
             if (bin !== BINS.LOBBY) {
-                // Only add header for non-lobby sections
-                output += `## ${bin}\n\n`;
+                output += `## ${getBinEmoji(bin)} ${bin}\n\n`;
             }
 
             binSettings.forEach(setting => {
                 let settingName = setting.name;
                 let settingValue = setting.value;
+                const emoji = settingEmojis[setting.id] || ":small_blue_diamond:";
 
                 // Format the setting name and value based on relevancy score
                 if (setting.relevancyScore >= 1.0) {
-                    settingName = `**${settingName}**`;
-                    settingValue = `**${settingValue}**`;
+                    // Critical setting - use bold and warning emoji
+                    output += `${emoji} **${settingName}**: **${settingValue}** :warning:\n`;
                 } else if (setting.relevancyScore >= 0.7) {
-                    settingName = `**${settingName}**`;
+                    // Important setting - use bold name and value
+                    output += `${emoji} **${settingName}**: **${settingValue}**\n`;
+                } else {
+                    // Regular setting - only bold the name
+                    output += `${emoji} ${settingName}: ${settingValue}\n`;
                 }
-
-                output += `- ${settingName}: ${settingValue}\n`;
             });
 
             output += '\n';
         }
     });
 
-    // Add credit line
-    output += window.DeathNote.settings.creditLine;
+    output += `${window.DeathNote.settings.creditLine}`;
 
     // Update the output box
     outputBox.value = output;
 };
+
+// Helper function to get emoji for bin headers
+function getBinEmoji(bin) {
+    switch(bin) {
+        case "Lobby Settings":
+            return ":joystick:";
+        case "Player":
+            return ":bust_in_silhouette:";
+        case "Gameplay":
+            return ":gear:";
+        default:
+            return ":notepad_spiral:";
+    }
+}
 
 // Initialize the UI when everything is loaded
 document.addEventListener('DOMContentLoaded', function() {
