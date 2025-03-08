@@ -1,0 +1,213 @@
+/* Main styles for Death Note: Killer Within Lobby Discord Post Generator */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+header {
+    background-color: #343a40;
+    color: white;
+    border-radius: 0 0 0.5rem 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border-radius: 0.5rem;
+    border: none;
+}
+
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+}
+
+/* Settings form styles */
+.settings-section {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.settings-section h4 {
+    color: #343a40;
+    margin-bottom: 0.75rem;
+    font-size: 1.2rem;
+}
+
+.setting-item {
+    margin-bottom: 1rem;
+}
+
+.setting-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.setting-label {
+    flex-grow: 1;
+    margin-bottom: 0;
+    font-weight: 500;
+}
+
+.reset-link {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-decoration: none;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+.reset-link:hover {
+    text-decoration: underline;
+    color: #007bff;
+}
+
+.form-check-input {
+    cursor: pointer;
+}
+
+.help-icon {
+    margin-left: 0.5rem;
+    color: #6c757d;
+    cursor: help;
+}
+
+.setting-description {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+/* Slider styles */
+.form-range {
+    cursor: pointer;
+}
+
+.range-values {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+/* Output box */
+#output-box {
+    font-family: monospace;
+    min-height: 200px;
+    resize: vertical;
+}
+
+/* Recommendation items */
+.recommendation-item {
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.25rem;
+}
+
+.recommendation-item:last-child {
+    margin-bottom: 0;
+}
+
+/* For bold and red styling in the output preview */
+.relevancy-bold {
+    font-weight: bold;
+}
+
+.relevancy-critical {
+    font-weight: bold;
+    color: white;
+    background-color: #dc3545;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .card {
+        margin-bottom: 1rem;
+    }
+
+    .setting-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .setting-checkbox {
+        margin-top: 0.5rem;
+    }
+}
+
+/* Tooltips */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Toggle button for advanced settings */
+#toggle-advanced-settings:focus {
+    box-shadow: none;
+}
+
+/* Copy button animation */
+@keyframes flash {
+    0% { background-color: #28a745; }
+    100% { background-color: #007bff; }
+}
+
+.copy-flash {
+    animation: flash 0.5s ease;
+}
+
+/* Button group for role selection */
+.btn-group {
+    width: 100%;
+}
+
+.btn-group .btn {
+    flex: 1;
+}
+
+/* Compact spacing for settings sections */
+.settings-section h4 {
+    margin-top: 0;
+}
+
+/* Tighter margins for settings items and sections */
+.setting-item {
+    margin-bottom: 0.75rem;
+}
+
+.settings-section {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+footer {
+    border-top: 1px solid #e9ecef;
+}
