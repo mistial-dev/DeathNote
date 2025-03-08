@@ -10,7 +10,7 @@ window.DeathNote.settings = window.DeathNote.settings || {};
 // Constants for the tool
 window.DeathNote.settings.version = "v0.1 Alpha";
 window.DeathNote.settings.toolUrl = "https://mistial-dev.github.io/DeathNote/";
-window.DeathNote.settings.creditLine = `Generated with [DeathNote Tool ${window.DeathNote.settings.version}](${window.DeathNote.settings.toolUrl})`;
+window.DeathNote.settings.creditLine = `[DeathNote Discord Post Maker ${window.DeathNote.settings.version}](${window.DeathNote.settings.toolUrl})`;
 
 // Min and max output sizes for dynamic thresholding
 window.DeathNote.settings.minOutputSize = 3; // Minimum number of settings to show

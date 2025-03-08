@@ -815,13 +815,14 @@ window.DeathNote.ui.calculateGameBalanceRating = function() {
         balanceScore -= progressDifference * 60;
     }
 
-    // Factor 2: Missing key roles
-    if (settings.melloRole && settings.melloRole.value === "0") {
-        balanceScore -= 15;
-    }
-
+    // Factor 2: Missing roles based on player count
     if (settings.kiraFollowerRole && settings.kiraFollowerRole.value === "0") {
-        balanceScore -= 15;
+        // Higher penalty for higher player counts
+        if (settings.maximumPlayers && settings.maximumPlayers.value >= 6) {
+            balanceScore -= 20; // Higher penalty for 6+ players
+        } else {
+            balanceScore -= 10; // Lower penalty for 5 or fewer players
+        }
     }
 
     // Factor 3: Extreme movement speed
@@ -839,19 +840,110 @@ window.DeathNote.ui.calculateGameBalanceRating = function() {
         balanceScore -= taskDeviation * 40;
     }
 
-    // Factor 5: Canvas tasks disabled
-    if (settings.canvasTasks && !settings.canvasTasks.value) {
-        balanceScore -= 10;
-    }
-
-    // Factor 6: Black notebooks with high criminal judgments
+    // Factor 5: Black notebooks with high criminal judgments
     if (settings.haveBlackNotebooks && settings.haveBlackNotebooks.value &&
         settings.maximumCriminalJudgments && settings.maximumCriminalJudgments.value > 6) {
         balanceScore -= 15;
     }
 
+    // Factor 6: High Kira Progress with many judgments
+    if (settings.kiraProgressMultiplier && settings.kiraProgressMultiplier.value >= 1.4 &&
+        settings.maximumCriminalJudgments && settings.maximumCriminalJudgments.value >= 7) {
+        balanceScore -= 20;
+    }
+
+    // Factor 7: Low Team L progress
+    if (settings.teamLProgressMultiplier && settings.teamLProgressMultiplier.value <= 0.7) {
+        balanceScore -= 15;
+    }
+
     // Clamp result between 0-100
     return Math.max(0, Math.min(100, Math.round(balanceScore)));
+};
+
+// Calculate fun rating (0-100%)
+window.DeathNote.ui.calculateFunRating = function() {
+    const settings = window.DeathNote.settings.settings;
+    let funScore = 85; // Start with a good baseline
+
+    // Factor 1: Player count (higher is more fun to a point)
+    if (settings.maximumPlayers) {
+        if (settings.maximumPlayers.value < 6) {
+            funScore -= (6 - settings.maximumPlayers.value) * 7; // Higher penalty
+        } else if (settings.maximumPlayers.value > 8) {
+            funScore += 5; // Bonus for large games
+        }
+    }
+
+    // Factor 2: Movement speed (slightly higher is more fun)
+    if (settings.movementSpeed) {
+        if (settings.movementSpeed.value < 0.8) {
+            funScore -= (0.8 - settings.movementSpeed.value) * 60; // Major penalty for slow movement
+        } else if (settings.movementSpeed.value > 1.0 && settings.movementSpeed.value <= 1.2) {
+            funScore += (settings.movementSpeed.value - 1.0) * 15; // Bonus for slightly faster
+        } else if (settings.movementSpeed.value > 1.2) {
+            funScore -= (settings.movementSpeed.value - 1.2) * 35; // Penalty for too fast
+        }
+    }
+
+    // Factor 3: Role variety
+    if (settings.melloRole && settings.melloRole.value === "0") {
+        funScore -= 25; // Major penalty for missing Mello
+    }
+
+    if (settings.kiraFollowerRole && settings.kiraFollowerRole.value === "0") {
+        funScore -= 20; // Major penalty for missing Kira Follower
+    }
+
+    // Factor 4: Black notebooks (add randomness and fun)
+    if (settings.haveBlackNotebooks && settings.haveBlackNotebooks.value) {
+        funScore += 10;
+    }
+
+    // Factor 5: Task count near ideal is more fun
+    if (settings.numberOfTasks) {
+        const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+        const taskDeviation = Math.abs(settings.numberOfTasks.value - taskCounts.ideal);
+
+        // Steeper penalty for extreme deviation
+        if (taskDeviation >= 3) {
+            funScore -= 20;
+        } else {
+            funScore -= taskDeviation * 7;
+        }
+    }
+
+    // Factor 6: Voice chat enabled
+    if (settings.voiceChat && !settings.voiceChat.value) {
+        funScore -= 15; // Penalty when disabled
+    }
+
+    // Factor 7: Role selection enabled
+    if (settings.roleSelection && settings.roleSelection.value) {
+        funScore += 5;
+    }
+
+    // Factor 8: Canvas tasks disabled
+    if (settings.canvasTasks && !settings.canvasTasks.value) {
+        funScore -= 20; // Major penalty for disabled canvas tasks
+    }
+
+    // Factor 9: Meeting time too short or too long
+    if (settings.meetingSeconds) {
+        if (settings.meetingSeconds.value < 60) {
+            funScore -= (60 - settings.meetingSeconds.value) / 60 * 20; // Penalty for very short meetings
+        } else if (settings.meetingSeconds.value > 210) {
+            funScore -= (settings.meetingSeconds.value - 210) / 30 * 10; // Penalty for very long meetings
+        }
+    }
+
+    // Factor 10: Day/Night seconds too short
+    if (settings.dayNightSeconds && settings.dayNightSeconds.value <= 30) {
+        funScore -= 10; // Penalty for very short rounds
+    }
+
+    // Clamp result between 0-100
+    return Math.max(0, Math.min(100, Math.round(funScore)));
 };
 
 // Calculate fun rating (0-100%)

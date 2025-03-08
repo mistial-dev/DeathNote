@@ -93,7 +93,21 @@ window.DeathNote.recommendations.recommendations = [
             return settings.melloRole && settings.melloRole.value === "0";
         },
         message: () => {
-            return "<span style='color: #721c24;'><strong>No Mello in your lobby?</strong> That's like Death Note without chocolate! 🍫 Players LOVE this role and might bail faster than Light ditches girlfriends. Maybe reconsider?</span>";
+            return "<span class='warning-text'><strong>No Mello in your lobby?</strong> That's like Death Note without chocolate! 🍫 Players LOVE this role and might bail faster than Light ditches girlfriends. Maybe reconsider?</span>";
+        }
+    },
+
+    // Recommendation 5: Kira Without a Follower
+    {
+        id: "noKiraFollower",
+        condition: (settings) => {
+            return settings.kiraFollowerRole && settings.kiraFollowerRole.value === "0";
+        },
+        message: (settings) => {
+            // Red warning if >= 6 players, regular otherwise
+            const isHighPlayerCount = settings.maximumPlayers && settings.maximumPlayers.value >= 6;
+            const warningClass = isHighPlayerCount ? "warning-text" : "";
+            return `<span class='${warningClass}'>Poor Kira has no sidekick! 😢 Even evil masterminds need a friend. ${isHighPlayerCount ? 'With ' + settings.maximumPlayers.value + ' players, Kira\'s gonna have a harder time than L at a cake-eating contest.' : 'Players might ghost the lobby faster than Mikami abandons a losing battle!'} Consider adding a Follower?</span>`;
         }
     },
 
@@ -188,14 +202,14 @@ window.DeathNote.recommendations.recommendations = [
         }
     },
 
-    // Recommendation 10: Canvas Tasks Disabled (toned down)
+    // Recommendation 10: Canvas Tasks Disabled (stronger warning)
     {
         id: "canvasTasksDisabled",
         condition: (settings) => {
             return settings.canvasTasks && !settings.canvasTasks.value;
         },
         message: () => {
-            return "Canvas Tasks are disabled? Team Kira will need to work harder to blend in! 🎭 Investigators might use NPC feedback to track Kira's movements more easily. It's still playable, but Kira players will need to be extra sneaky!";
+            return "<span class='warning-text'><strong>Canvas Tasks are disabled!</strong> Team Kira will struggle to blend in! 🎭 Investigators can use NPC feedback to easily track Kira's movements. This often leads to frustrated Kira players and an un-fun meta. Consider enabling Canvas Tasks for a better experience.</span>";
         }
     },
 

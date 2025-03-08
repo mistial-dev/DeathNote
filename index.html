@@ -16,7 +16,7 @@
 <div class="container-fluid">
     <header class="py-3 text-center">
         <h1 class="display-5">Death Note: Killer Within</h1>
-        <h2 class="h4 mb-3">Lobby Discord Post Generator</h2>
+        <h2 class="h4 mb-3">DeathNote Discord Post Maker</h2>
     </header>
 
     <main class="row">
@@ -25,12 +25,6 @@
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h3 class="h5 mb-0">Settings</h3>
                     <div>
-                        <span id="balance-indicator" class="badge rounded-pill me-2" title="Game Balance Rating">
-                            <i class="fas fa-balance-scale me-1"></i>Balance (subjective):<span id="balance-value">--</span>
-                        </span>
-                        <span id="fun-indicator" class="badge rounded-pill me-2" title="Fun Rating">
-                            <i class="fas fa-smile me-1"></i>Fun: (subjective)<span id="fun-value">--</span>
-                        </span>
                         <button id="reset-all-btn" class="btn btn-sm btn-outline-light">Reset All</button>
                     </div>
                 </div>
@@ -84,13 +78,28 @@
                     <div class="mb-3">
                         <textarea id="output-box" class="form-control" rows="12" readonly></textarea>
                     </div>
-                    <div class="d-flex">
-                        <button id="copy-btn" class="btn btn-primary">
-                            <i class="fas fa-copy me-2"></i>Copy to Clipboard
-                        </button>
-                        <button id="copy-link-btn" class="btn btn-secondary ms-2">
-                            <i class="fas fa-link me-2"></i>Copy Link to Settings
-                        </button>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div class="d-flex mb-2">
+                            <button id="copy-btn" class="btn btn-primary">
+                                <i class="fas fa-copy me-2"></i>Copy to Clipboard
+                            </button>
+                            <button id="copy-link-btn" class="btn btn-secondary ms-2">
+                                <i class="fas fa-link me-2"></i>Copy Link to Settings
+                            </button>
+                        </div>
+                        <div class="mb-2 text-end">
+                            <div class="d-flex align-items-center rating-container">
+                    <span id="balance-indicator" class="badge rounded-pill me-2" title="Game Balance Rating">
+                        <i class="fas fa-balance-scale me-1"></i>Balance:<span id="balance-value">/100--</span>
+                    </span>
+                                <span id="fun-indicator" class="badge rounded-pill" title="Fun Rating">
+                        <i class="fas fa-smile me-1"></i>Fun: <span id="fun-value">/100--</span>
+                    </span>
+                            </div>
+                            <div class="small text-muted mt-1">
+                                Note: Balance and fun ratings are subjective estimates
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
