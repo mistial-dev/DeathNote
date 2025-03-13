@@ -45,40 +45,148 @@
             approachWarning: ":bell:"
         },
 
+        // Track initialization
+        initialized: false,
+
         /**
          * Initialize the Output UI module
          */
         initialize: function() {
+            if (this.initialized) {
+                console.log('Output UI already initialized');
+                return;
+            }
+
+            console.log('Initializing Output UI module');
+
+            // Ensure methods have correct context using explicit binding
+            this.updateOutput = this.updateOutput.bind(this);
+            this.updateRatings = this.updateRatings.bind(this);
+            this._handleCopyClick = this._handleCopyClick.bind(this);
+            this._handleCopyLinkClick = this._handleCopyLinkClick.bind(this);
+
+            // Initialize DOM elements and event listeners
             this._initializeElements();
             this._setupEventListeners();
-            this.updateOutput();
+
+            // Set initial flag to initialized
+            this.initialized = true;
+
+            // Perform initial output update with a slight delay
+            setTimeout(() => {
+                console.log('Performing initial output update');
+                this.updateOutput();
+            }, 500);
 
             console.log('Output UI initialized');
+        },
+
+        /**
+         * Initialize DOM element references
+         * @private
+         */
+        _initializeElements: function() {
+            // Safely get DOM elements with fallback
+            this.elements.outputBox = document.getElementById('output-box');
+            this.elements.copyBtn = document.getElementById('copy-btn');
+            this.elements.copyLinkBtn = document.getElementById('copy-link-btn');
+            this.elements.balanceIndicator = document.getElementById('balance-indicator');
+            this.elements.funIndicator = document.getElementById('fun-indicator');
+            this.elements.balanceValue = document.getElementById('balance-value');
+            this.elements.funValue = document.getElementById('fun-value');
+
+            // Log element status
+            if (!this.elements.outputBox) {
+                console.error('CRITICAL: Output Box Not Found in the DOM!');
+            } else {
+                console.log('Output Box Found:', this.elements.outputBox);
+            }
+        },
+
+        /**
+         * Set up event listeners for UI interactions
+         * @private
+         */
+        _setupEventListeners: function() {
+            // Set up copy button handler
+            if (this.elements.copyBtn) {
+                this.elements.copyBtn.addEventListener('click', this._handleCopyClick);
+            }
+
+            // Set up copy link button handler
+            if (this.elements.copyLinkBtn) {
+                this.elements.copyLinkBtn.addEventListener('click', this._handleCopyLinkClick);
+            }
+
+            // Listen for settings changes to update output
+            document.addEventListener('deathNote:settings:changed', () => {
+                console.log('Settings changed event detected, updating output');
+                this.updateOutput();
+            });
+        },
+
+        /**
+         * Get current app version from DeathNote global object
+         * @returns {string} Current version number
+         */
+        _getAppVersion: function() {
+            // Try to get version from various locations
+            if (window.DeathNote && window.DeathNote.version) {
+                return window.DeathNote.version;
+            }
+
+            // Fallback to default if not found
+            return 'v1.0';
+        },
+
+        /**
+         * Get credit line with version number
+         * @returns {string} Formatted credit line with version
+         */
+        _getCreditLine: function() {
+            const version = this._getAppVersion();
+            const toolUrl = window.DeathNote && window.DeathNote.toolUrl ?
+                window.DeathNote.toolUrl : 'https://mistial-dev.github.io/DeathNote/';
+
+            return `Generated with [DeathNote Tool ${version}](${toolUrl})`;
         },
 
         /**
          * Update the output in the textbox
          */
         updateOutput: function() {
-            const settings = DeathNote.getModule('settings');
-            if (!settings) {
-                console.error('Settings module not available');
-                return;
-            }
+            console.log('updateOutput called');
 
-            const BINS = settings.BINS;
-            const settingsData = settings.getAllSettings();
-            const definitions = settings.getAllDefinitions();
-
+            // Verify output element exists
             if (!this.elements.outputBox) {
-                console.error('Output box not found');
+                console.error('Cannot update output - output-box element not found');
                 return;
             }
+
+            // Get settings from global namespace
+            const settings = window.DeathNote && window.DeathNote.getModule ?
+                window.DeathNote.getModule('settings') : null;
+
+            if (!settings) {
+                console.error('Cannot update output - settings module not available');
+                this._showErrorMessage('Settings module not found. Please refresh the page.');
+                return;
+            }
+
+            // Log current settings for debugging
+            const settingsData = settings.getAllSettings();
+            console.log('Current Settings:', settingsData);
+
+            // Get bins and definitions
+            const BINS = settings.BINS || { LOBBY: 'Lobby Settings', PLAYER: 'Player', GAMEPLAY: 'Gameplay' };
+            const definitions = settings.getAllDefinitions();
 
             // Check if lobby code is set
             const lobbyCode = settings.getValue('lobbyCode', '');
-            if (!lobbyCode || lobbyCode.length < 5) {
-                // Show prompt if lobby code is not set properly
+            console.log('Lobby Code:', lobbyCode);
+
+            if (!lobbyCode || lobbyCode.trim().length < 5) {
+                console.warn('Lobby code is invalid or missing');
                 this.elements.outputBox.value = "# Please Enter Lobby Code\n\nEnter a 5-character lobby code in the settings to generate your Discord post.";
                 return;
             }
@@ -86,13 +194,28 @@
             // Count non-default settings for threshold calculation
             let nonDefaultCount = 0;
             definitions.forEach(definition => {
-                if (settings.getValue(definition.id, null) !== definition.defaultValue) {
+                const value = settings.getValue(definition.id, null);
+                const defaultValue = definition.defaultValue;
+
+                // Compare values properly based on type
+                let isDifferent = false;
+                if (typeof value === 'boolean' || typeof defaultValue === 'boolean') {
+                    // Handle boolean comparison separately
+                    isDifferent = Boolean(value) !== Boolean(defaultValue);
+                } else {
+                    isDifferent = value !== defaultValue;
+                }
+
+                if (isDifferent) {
                     nonDefaultCount++;
                 }
             });
 
+            console.log(`Non-default settings count: ${nonDefaultCount}`);
+
             // Calculate dynamic threshold based on non-default count
             const threshold = Math.min(0.6, 0.08 * nonDefaultCount + 0.2);
+            console.log(`Calculated threshold: ${threshold}`);
 
             // Organize settings by bin
             const settingsByBin = {};
@@ -103,9 +226,17 @@
             // Process settings for visibility
             definitions.forEach(definition => {
                 const settingId = definition.id;
+                const settingData = settingsData[settingId];
+
+                // Skip if setting data is missing
+                if (!settingData) {
+                    console.warn(`No data found for setting: ${settingId}`);
+                    return;
+                }
 
                 // Skip if manually set to not visible
-                if (settingsData[settingId]?.manuallySet && !settingsData[settingId]?.visible) {
+                if (settingData.manuallySet && !settingData.visible) {
+                    console.log(`Setting ${settingId} manually hidden`);
                     return;
                 }
 
@@ -115,20 +246,23 @@
                 // Force visibility for critical settings that can't be hidden
                 if (!definition.canHide) {
                     isVisible = true;
+                    console.log(`Setting ${settingId} is critical and will be shown`);
                 }
                 // Determine visibility by threshold if not manually set
-                else if (!settingsData[settingId]?.manuallySet) {
-                    isVisible = settingsData[settingId]?.relevancyScore > threshold;
+                else if (!settingData.manuallySet) {
+                    isVisible = settingData.relevancyScore > threshold;
+                    console.log(`Setting ${settingId} relevancy: ${settingData.relevancyScore} (threshold: ${threshold}), visible: ${isVisible}`);
                 }
                 // Use manual setting if available
                 else {
-                    isVisible = settingsData[settingId]?.visible;
+                    isVisible = !!settingData.visible;
+                    console.log(`Setting ${settingId} manually set to visible: ${isVisible}`);
                 }
 
-                // Apply visibility rules (handled by settings.js)
+                // Apply visibility rules
                 isVisible = settings.applySettingVisibilityRules(definition, isVisible);
 
-                // Special case for Allowed Player Type
+                // Special case for Checkbox Group
                 if (definition.type === 'checkbox-group') {
                     // Skip parent, we'll process each option separately
                     return;
@@ -136,17 +270,21 @@
 
                 // Only add visible settings to the output bins
                 if (isVisible) {
+                    const value = settings.getSettingDisplayValue(definition);
                     settingsByBin[definition.bin].push({
                         id: definition.id,
                         name: definition.name,
-                        value: settings.getSettingDisplayValue(definition) || settingsData[definition.id]?.value,
-                        relevancyScore: settingsData[definition.id]?.relevancyScore || 0
+                        value: value,
+                        relevancyScore: settingData.relevancyScore || 0
                     });
+                    console.log(`Added ${settingId} to bin ${definition.bin}: ${value}`);
                 }
             });
 
-            // Process special setting groups
-            settings.processSpecialSettingGroups(settingsByBin);
+            // Process special setting groups (like checkbox groups)
+            if (typeof settings.processSpecialSettingGroups === 'function') {
+                settings.processSpecialSettingGroups(settingsByBin);
+            }
 
             // Sort settings within each bin by relevancy score (descending)
             Object.keys(settingsByBin).forEach(bin => {
@@ -172,8 +310,7 @@
                 headerEmoji = ":warning:";
             }
 
-            // Build the output markdown with Discord-friendly formatting and decorative elements
-            // Starting with an empty line for better spacing in Discord
+            // Build the output markdown with Discord-friendly formatting
             let output = `_ _\n# ${headerEmoji} **DEATH NOTE: KILLER WITHIN** ${headerEmoji}\n\n`;
 
             // Add each bin to the output (only if it has visible settings)
@@ -208,307 +345,92 @@
                 }
             });
 
-            output += `${settings.creditLine}`;
+            // Add credit line with version
+            output += this._getCreditLine();
 
-            // Update the output box
+            // Update the output box with the formatted content
             this.elements.outputBox.value = output;
+            console.log('Output updated successfully');
 
             // Update ratings
             this.updateRatings();
         },
 
         /**
-         * Update the balance and fun ratings
+         * Display an error message in the output box
+         * @private
+         * @param {string} message - Error message to display
          */
-        updateRatings: function() {
-            const balanceRating = this.calculateGameBalanceRating();
-            const funRating = this.calculateFunRating();
-
-            if (this.elements.balanceValue) {
-                this.elements.balanceValue.textContent = balanceRating;
-            }
-
-            if (this.elements.funValue) {
-                this.elements.funValue.textContent = funRating;
-            }
-
-            // Update balance indicator styling
-            if (this.elements.balanceIndicator) {
-                this.elements.balanceIndicator.className = 'badge rounded-pill me-2';
-
-                if (balanceRating >= 80) {
-                    this.elements.balanceIndicator.classList.add('bg-success');
-                } else if (balanceRating >= 60) {
-                    this.elements.balanceIndicator.classList.add('bg-warning', 'text-dark');
-                } else {
-                    this.elements.balanceIndicator.classList.add('bg-danger');
-                }
-            }
-
-            // Update fun indicator styling
-            if (this.elements.funIndicator) {
-                this.elements.funIndicator.className = 'badge rounded-pill me-2';
-
-                if (funRating >= 80) {
-                    this.elements.funIndicator.classList.add('bg-success');
-                } else if (funRating >= 60) {
-                    this.elements.funIndicator.classList.add('bg-warning', 'text-dark');
-                } else {
-                    this.elements.funIndicator.classList.add('bg-danger');
-                }
+        _showErrorMessage: function(message) {
+            if (this.elements.outputBox) {
+                this.elements.outputBox.value = `# Error\n\n${message}\n\nPlease check your settings or reload the page.`;
             }
         },
 
         /**
-         * Calculate game balance rating (0-100%)
-         * @returns {number} Balance rating (0-100)
-         */
-        calculateGameBalanceRating: function() {
-            const settings = DeathNote.getModule('settings');
-            if (!settings) return 50;
-
-            let balanceScore = 100; // Start with perfect balance
-
-            // Factor 1: Unbalanced progress multipliers
-            const kiraMultiplier = settings.getValue('kiraProgressMultiplier', 1.0);
-            const teamLMultiplier = settings.getValue('teamLProgressMultiplier', 1.0);
-
-            const progressDifference = Math.abs(kiraMultiplier - teamLMultiplier);
-            // Deduct up to 30 points for unbalanced progress
-            balanceScore -= progressDifference * 60;
-
-            // Factor 2: Missing roles based on player count
-            if (settings.getValue('kiraFollowerRole', '1') === "0") {
-                // Higher penalty for higher player counts
-                if (settings.getValue('maximumPlayers', 10) >= 6) {
-                    balanceScore -= 20; // Higher penalty for 6+ players
-                } else {
-                    balanceScore -= 10; // Lower penalty for 5 or fewer players
-                }
-            }
-
-            // Factor 3: Extreme movement speed
-            const movementSpeed = settings.getValue('movementSpeed', 1.0);
-            const speedDeviation = Math.abs(movementSpeed - 1.0);
-            // Deduct up to 15 points for extreme speeds
-            balanceScore -= speedDeviation * 30;
-
-            // Factor 4: Too few/many tasks relative to ideal
-            const taskCount = settings.getValue('numberOfTasks', 2);
-            const taskCounts = settings.calculateIdealTaskCount();
-            const taskDeviation = Math.abs(taskCount - taskCounts.ideal) / taskCounts.ideal;
-            // Deduct up to 20 points for task imbalance
-            balanceScore -= taskDeviation * 40;
-
-            // Factor 5: Black notebooks with high criminal judgments
-            if (settings.getValue('haveBlackNotebooks', false) &&
-                settings.getValue('maximumCriminalJudgments', 5) > 6) {
-                balanceScore -= 15;
-            }
-
-            // Factor 6: High Kira Progress with many judgments
-            if (kiraMultiplier >= 1.4 &&
-                settings.getValue('maximumCriminalJudgments', 5) >= 7) {
-                balanceScore -= 20;
-            }
-
-            // Factor 7: Low Team L progress
-            if (teamLMultiplier <= 0.7) {
-                balanceScore -= 15;
-            }
-
-            // Factor 8: Approach Warning disabled (reduces balance)
-            if (!settings.getValue('approachWarning', true)) {
-                balanceScore -= 10;
-            }
-
-            // Clamp result between 0-100
-            return Math.max(0, Math.min(100, Math.round(balanceScore)));
-        },
-
-        /**
-         * Calculate fun rating (0-100%)
-         * @returns {number} Fun rating (0-100)
-         */
-        calculateFunRating: function() {
-            const settings = DeathNote.getModule('settings');
-            if (!settings) return 50;
-
-            let funScore = 85; // Start with a good baseline
-
-            // Factor 1: Player count (higher is more fun to a point)
-            const maxPlayers = settings.getValue('maximumPlayers', 10);
-            if (maxPlayers < 6) {
-                funScore -= (6 - maxPlayers) * 7; // Higher penalty
-            } else if (maxPlayers > 8) {
-                funScore += 5; // Bonus for large games
-            }
-
-            // Factor 2: Movement speed (slightly higher is more fun)
-            const movementSpeed = settings.getValue('movementSpeed', 1.0);
-            if (movementSpeed < 0.8) {
-                funScore -= (0.8 - movementSpeed) * 60; // Major penalty for slow movement
-            } else if (movementSpeed > 1.0 && movementSpeed <= 1.2) {
-                funScore += (movementSpeed - 1.0) * 15; // Bonus for slightly faster
-            } else if (movementSpeed > 1.2) {
-                funScore -= (movementSpeed - 1.2) * 35; // Penalty for too fast
-            }
-
-            // Factor 3: Role variety
-            if (settings.getValue('melloRole', '1') === "0") {
-                funScore -= 25; // Major penalty for missing Mello
-            }
-
-            if (settings.getValue('kiraFollowerRole', '1') === "0") {
-                funScore -= 20; // Major penalty for missing Kira Follower
-            }
-
-            // Factor 4: Black notebooks (add randomness and fun)
-            if (settings.getValue('haveBlackNotebooks', false)) {
-                funScore += 10;
-            }
-
-            // Factor 5: Task count near ideal is more fun
-            const taskCount = settings.getValue('numberOfTasks', 2);
-            const taskCounts = settings.calculateIdealTaskCount();
-            const taskDeviation = Math.abs(taskCount - taskCounts.ideal);
-
-            // Steeper penalty for extreme deviation
-            if (taskDeviation >= 3) {
-                funScore -= 20;
-            } else {
-                funScore -= taskDeviation * 7;
-            }
-
-            // Factor 6: Voice chat enabled
-            if (!settings.getValue('voiceChat', true)) {
-                funScore -= 15; // Penalty when disabled
-            }
-
-            // Factor 7: Role selection enabled
-            if (settings.getValue('roleSelection', true)) {
-                funScore += 5;
-            }
-
-            // Factor 8: Canvas tasks disabled
-            if (!settings.getValue('canvasTasks', true)) {
-                funScore -= 20; // Major penalty for disabled canvas tasks
-            }
-
-            // Factor 9: Meeting time too short or too long
-            const meetingSeconds = settings.getValue('meetingSeconds', 150);
-            if (meetingSeconds < 60) {
-                funScore -= (60 - meetingSeconds) / 60 * 20; // Penalty for very short meetings
-            } else if (meetingSeconds > 210) {
-                funScore -= (meetingSeconds - 210) / 30 * 10; // Penalty for very long meetings
-            }
-
-            // Factor 10: Day/Night seconds too short
-            if (settings.getValue('dayNightSeconds', 45) <= 30) {
-                funScore -= 10; // Penalty for very short rounds
-            }
-
-            // Factor 11: Approach Warning disabled (can be more challenging/fun for some)
-            if (!settings.getValue('approachWarning', true)) {
-                funScore += 5; // Small bonus for added challenge
-            }
-
-            // Clamp result between 0-100
-            return Math.max(0, Math.min(100, Math.round(funScore)));
-        },
-
-        // Private methods
-
-        /**
-         * Initialize DOM element references
+         * Handle copy button click
          * @private
          */
-        _initializeElements: function() {
-            this.elements.outputBox = document.getElementById('output-box');
-            this.elements.copyBtn = document.getElementById('copy-btn');
-            this.elements.copyLinkBtn = document.getElementById('copy-link-btn');
-            this.elements.balanceIndicator = document.getElementById('balance-indicator');
-            this.elements.funIndicator = document.getElementById('fun-indicator');
-            this.elements.balanceValue = document.getElementById('balance-value');
-            this.elements.funValue = document.getElementById('fun-value');
+        _handleCopyClick: function() {
+            if (!this.elements.outputBox) return;
 
-            if (!this.elements.outputBox) {
-                console.error('Output box element not found');
+            try {
+                this.elements.outputBox.select();
+                document.execCommand('copy');
+
+                // Optional: Add visual feedback
+                this._flashCopyButton();
+            } catch (err) {
+                console.error('Copy failed:', err);
+                alert('Failed to copy. Please manually select and copy the text.');
             }
         },
 
         /**
-         * Set up event listeners for UI interactions
+         * Handle copy link button click
          * @private
          */
-        _setupEventListeners: function() {
-            // Set up copy button
-            if (this.elements.copyBtn && this.elements.outputBox) {
-                this.elements.copyBtn.addEventListener('click', () => {
-                    // Select the text
-                    this.elements.outputBox.select();
+        _handleCopyLinkClick: function() {
+            const hashManager = window.DeathNote && window.DeathNote.getModule ?
+                window.DeathNote.getModule('utils')?.hashManager : null;
 
-                    // Copy the text to the clipboard
-                    navigator.clipboard.writeText(this.elements.outputBox.value)
-                        .then(() => {
-                            // Visual feedback on successful copy
-                            this.elements.copyBtn.classList.add('copy-flash');
-                            this.elements.copyBtn.textContent = 'Copied!';
+            if (hashManager && hashManager.updateUrlHash) {
+                hashManager.updateUrlHash();
 
-                            // Reset the button after a delay
-                            setTimeout(() => {
-                                this.elements.copyBtn.classList.remove('copy-flash');
-                                this.elements.copyBtn.innerHTML = '<i class="fas fa-copy me-2"></i>Copy to Clipboard';
-                            }, 2000);
-                        })
-                        .catch(err => {
-                            console.error('Could not copy text: ', err);
-                        });
-                });
-            }
-
-            // Set up copy link button
-            if (this.elements.copyLinkBtn) {
-                this.elements.copyLinkBtn.addEventListener('click', () => {
-                    // Update URL hash with current settings
-                    const hashManager = DeathNote.utils.hashManager;
-                    if (hashManager) {
-                        hashManager.updateUrlHash();
-                    }
-
-                    // Get the full URL
-                    const url = window.location.href;
-
-                    // Copy to clipboard
-                    navigator.clipboard.writeText(url)
-                        .then(() => {
-                            // Visual feedback on successful copy
+                try {
+                    navigator.clipboard.writeText(window.location.href).then(() => {
+                        // Add visual feedback
+                        if (this.elements.copyLinkBtn) {
                             this.elements.copyLinkBtn.classList.add('copy-flash');
-                            this.elements.copyLinkBtn.textContent = 'Link Copied!';
-
-                            // Reset the button after a delay
                             setTimeout(() => {
                                 this.elements.copyLinkBtn.classList.remove('copy-flash');
-                                this.elements.copyLinkBtn.innerHTML = '<i class="fas fa-link me-2"></i>Copy Link to Settings';
-                            }, 2000);
-                        })
-                        .catch(err => {
-                            console.error('Could not copy URL: ', err);
-                        });
-                });
+                            }, 500);
+                        }
+                    }).catch(err => {
+                        console.error('Failed to copy link:', err);
+                        alert('Failed to copy link. Please manually copy the URL.');
+                    });
+                } catch (err) {
+                    console.error('Copy link failed:', err);
+                    alert('Failed to copy link. Please manually copy the URL.');
+                }
+            } else {
+                console.error('Hash manager not available');
+                alert('Unable to generate shareable link.');
             }
+        },
 
-            // Auto-expand selection to full text when partial selection is made
-            if (this.elements.outputBox) {
-                this.elements.outputBox.addEventListener('click', function() {
-                    this.select();
-                });
+        /**
+         * Flash the copy button to provide visual feedback
+         * @private
+         */
+        _flashCopyButton: function() {
+            if (this.elements.copyBtn) {
+                this.elements.copyBtn.classList.add('copy-flash');
+                setTimeout(() => {
+                    this.elements.copyBtn.classList.remove('copy-flash');
+                }, 500);
             }
-
-            // Listen for settings changes
-            document.addEventListener('settings:changed', () => {
-                this.updateOutput();
-            });
         },
 
         /**
@@ -528,9 +450,213 @@
                 default:
                     return ":notepad_spiral:";
             }
+        },
+
+        /**
+         * Calculate game balance rating
+         * @returns {number} Balance rating between 0-100
+         */
+        calculateGameBalanceRating: function() {
+            try {
+                const settings = window.DeathNote && window.DeathNote.getModule ?
+                    window.DeathNote.getModule('settings') : null;
+
+                if (!settings) return 75; // Default if settings not available
+
+                // Get key settings that affect balance
+                const kiraProgress = settings.getValue('kiraProgressMultiplier', 1.0);
+                const lProgress = settings.getValue('teamLProgressMultiplier', 1.0);
+                const judgments = settings.getValue('maximumCriminalJudgments', 5);
+                const melloRole = settings.getValue('melloRole', '1');
+                const kiraFollower = settings.getValue('kiraFollowerRole', '1');
+                const canvasTasks = settings.getValue('canvasTasks', true);
+
+                // Calculate base balance score
+                let balance = 80; // Start with a reasonable baseline
+
+                // Adjust for progress multiplier imbalance
+                const progressDiff = Math.abs(kiraProgress - lProgress);
+                if (progressDiff > 0.5) balance -= 15 * progressDiff;
+
+                // Adjust for high Kira power
+                if (kiraProgress >= 1.4 && judgments > 5) {
+                    balance -= 10 * (judgments - 5);
+                }
+
+                // Adjust for disabled roles
+                if (melloRole === '0') balance -= 15;
+                if (kiraFollower === '0') balance -= 10;
+
+                // Adjust for Canvas Tasks
+                if (!canvasTasks) balance -= 20;
+
+                // Clamp to valid range
+                return Math.max(0, Math.min(100, Math.round(balance)));
+            } catch (error) {
+                console.error('Error calculating balance rating:', error);
+                return 75; // Default rating on error
+            }
+        },
+
+        /**
+         * Calculate fun rating
+         * @returns {number} Fun rating between 0-100
+         */
+        calculateFunRating: function() {
+            try {
+                const settings = window.DeathNote && window.DeathNote.getModule ?
+                    window.DeathNote.getModule('settings') : null;
+
+                if (!settings) return 80; // Default if settings not available
+
+                // Get key settings that affect fun
+                const movementSpeed = settings.getValue('movementSpeed', 1.0);
+                const dayNightSeconds = settings.getValue('dayNightSeconds', 45);
+                const numberOfTasks = settings.getValue('numberOfTasks', 2);
+                const numberOfInputs = settings.getValue('numberOfInputs', 2);
+                const voiceChat = settings.getValue('voiceChat', true);
+                const melloRole = settings.getValue('melloRole', '1');
+                const kiraFollower = settings.getValue('kiraFollowerRole', '1');
+
+                // Calculate base fun score
+                let fun = 85; // Start with a reasonable baseline
+
+                // Calculate ideal task count
+                let idealTasks = 3;
+                if (typeof settings.calculateIdealTaskCount === 'function') {
+                    try {
+                        const taskCounts = settings.calculateIdealTaskCount();
+                        idealTasks = taskCounts.ideal;
+                    } catch (e) {
+                        console.warn('Failed to calculate ideal tasks', e);
+                    }
+                }
+
+                // Adjust for extreme movement speed
+                if (movementSpeed < 0.7) fun -= 20;
+                else if (movementSpeed < 0.9) fun -= 10;
+                else if (movementSpeed > 1.3) fun -= 5;
+
+                // Adjust for day/night duration extremes
+                if (dayNightSeconds <= 30) fun -= 5;
+                else if (dayNightSeconds >= 90) fun -= 5;
+
+                // Adjust for task count relative to ideal
+                const taskDiff = Math.abs(numberOfTasks - idealTasks);
+                if (taskDiff > 0) fun -= 5 * taskDiff;
+
+                // Adjust for high input count
+                if (numberOfInputs >= 4) fun -= 10;
+
+                // Adjust for disabled voice chat
+                if (!voiceChat) fun -= 15;
+
+                // Adjust for disabled roles
+                if (melloRole === '0') fun -= 10;
+                if (kiraFollower === '0') fun -= 10;
+
+                // Clamp to valid range
+                return Math.max(0, Math.min(100, Math.round(fun)));
+            } catch (error) {
+                console.error('Error calculating fun rating:', error);
+                return 80; // Default rating on error
+            }
+        },
+
+        /**
+         * Update ratings display
+         */
+        updateRatings: function() {
+            try {
+                const balanceRating = this.calculateGameBalanceRating();
+                const funRating = this.calculateFunRating();
+
+                // Update balance rating display
+                if (this.elements.balanceValue) {
+                    this.elements.balanceValue.textContent = balanceRating;
+                }
+
+                if (this.elements.balanceIndicator) {
+                    this._updateRatingIndicator(
+                        this.elements.balanceIndicator,
+                        balanceRating,
+                        'Balance Rating'
+                    );
+                }
+
+                // Update fun rating display
+                if (this.elements.funValue) {
+                    this.elements.funValue.textContent = funRating;
+                }
+
+                if (this.elements.funIndicator) {
+                    this._updateRatingIndicator(
+                        this.elements.funIndicator,
+                        funRating,
+                        'Fun Rating'
+                    );
+                }
+            } catch (error) {
+                console.error('Error updating ratings:', error);
+            }
+        },
+
+        /**
+         * Update a rating indicator's styling
+         * @private
+         * @param {HTMLElement} indicator - Rating indicator element
+         * @param {number} rating - Numerical rating
+         * @param {string} label - Rating label for logging
+         */
+        _updateRatingIndicator: function(indicator, rating, label) {
+            // Reset classes
+            indicator.className = 'badge rounded-pill me-2';
+
+            // Apply styling based on rating
+            if (rating >= 80) {
+                indicator.classList.add('bg-success');
+            } else if (rating >= 60) {
+                indicator.classList.add('bg-warning', 'text-dark');
+            } else {
+                indicator.classList.add('bg-danger');
+            }
         }
     };
 
-    // Register with the UI namespace
-    DeathNote.ui.output = OutputUI;
+    // Register the module with the DeathNote application
+    if (window.DeathNote) {
+        // Ensure UI namespace exists
+        window.DeathNote.ui = window.DeathNote.ui || {};
+
+        // Add output UI to the namespace
+        window.DeathNote.ui.output = OutputUI;
+
+        // Register the output UI module
+        if (typeof window.DeathNote.registerModule === 'function') {
+            window.DeathNote.registerModule('ui', {
+                initialize: function() {
+                    console.log('Output UI module registration initializing');
+                    OutputUI.initialize();
+                },
+                output: OutputUI
+            });
+        }
+    }
+
+    // Direct initialization when DOM is ready (as a fallback)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only initialize if not already done through the module system
+        if (!OutputUI.initialized) {
+            console.log('Direct initialization of Output UI');
+            OutputUI.initialize();
+        }
+
+        // Force an initial output update
+        setTimeout(function() {
+            if (typeof OutputUI.updateOutput === 'function') {
+                console.log('Forcing initial output update');
+                OutputUI.updateOutput();
+            }
+        }, 1000);
+    });
 })();

@@ -6,7 +6,9 @@
 (function() {
     'use strict';
 
-    // UI Module
+    /**
+     * Settings UI Module
+     */
     const SettingsUI = {
         // DOM Element references
         elements: {
@@ -19,15 +21,59 @@
             advancedCaret: null
         },
 
+        // Track initialization
+        initialized: false,
+
         /**
          * Initialize the Settings UI
          */
         initialize: function() {
+            if (this.initialized) {
+                console.log('Settings UI already initialized');
+                return;
+            }
+
+            console.log('Initializing Settings UI');
+
+            // Wait for DOM to be fully ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    this._completeInitialization();
+                });
+            } else {
+                this._completeInitialization();
+            }
+        },
+
+        /**
+         * Complete the initialization process once DOM is ready
+         * @private
+         */
+        _completeInitialization: function() {
             this._initializeElements();
+
+            if (!this._validateElements()) {
+                console.error('Required DOM elements not found for Settings UI. Retrying in 500ms...');
+                // Retry after a short delay
+                setTimeout(() => {
+                    this._initializeElements();
+                    if (this._validateElements()) {
+                        console.log('Settings UI elements found on retry');
+                        this._generateUI();
+                        this._setupEventListeners();
+                        this.initialized = true;
+                    } else {
+                        console.error('Failed to initialize Settings UI after retry');
+                    }
+                }, 500);
+                return;
+            }
+
             this._generateUI();
             this._setupEventListeners();
 
-            console.log('Settings UI initialized');
+            this.initialized = true;
+            console.log('Settings UI initialization completed successfully');
         },
 
         /**
@@ -57,7 +103,7 @@
             this._syncVisibilityCheckbox(settingId);
 
             // Trigger output update
-            document.dispatchEvent(new CustomEvent('settings:changed'));
+            document.dispatchEvent(new CustomEvent('deathNote:settings:changed'));
         },
 
         /**
@@ -82,7 +128,7 @@
                 });
 
                 // Trigger output update
-                document.dispatchEvent(new CustomEvent('settings:changed'));
+                document.dispatchEvent(new CustomEvent('deathNote:settings:changed'));
             }
         },
 
@@ -101,13 +147,25 @@
             this.elements.resetAllButton = document.getElementById('reset-all-btn');
             this.elements.advancedCaret = document.getElementById('advanced-caret');
 
-            // Verify elements exist
-            if (!this.elements.lobbySettingsContainer ||
-                !this.elements.playerSettingsContainer ||
-                !this.elements.gameplaySettingsContainer ||
-                !this.elements.advancedSettingsContainer) {
-                console.error('Required DOM elements not found for settings UI');
-            }
+            // Log the status of elements to help debug
+            console.log('Settings UI DOM elements status:',
+                'lobbySettingsContainer:', !!this.elements.lobbySettingsContainer,
+                'playerSettingsContainer:', !!this.elements.playerSettingsContainer,
+                'gameplaySettingsContainer:', !!this.elements.gameplaySettingsContainer,
+                'advancedSettingsContainer:', !!this.elements.advancedSettingsContainer
+            );
+        },
+
+        /**
+         * Validate that required elements exist
+         * @private
+         * @returns {boolean} True if all required elements exist
+         */
+        _validateElements: function() {
+            return this.elements.lobbySettingsContainer !== null &&
+                this.elements.playerSettingsContainer !== null &&
+                this.elements.gameplaySettingsContainer !== null &&
+                this.elements.advancedSettingsContainer !== null;
         },
 
         /**
@@ -129,8 +187,16 @@
             this._setupRadioButtonSyncing();
 
             // Listen for settings changes to update UI
-            document.addEventListener('settings:changed', () => {
+            document.addEventListener('deathNote:settings:changed', () => {
+                console.log('Settings changed event detected, refreshing UI.');
                 this._updateRadioButtonsUI();
+            });
+
+            // Listen for visibility change requests
+            document.addEventListener('deathNote:settings:visibilityChanged', (event) => {
+                if (event.detail && event.detail.id) {
+                    this._syncVisibilityCheckbox(event.detail.id);
+                }
             });
         },
 
@@ -139,14 +205,17 @@
          * @private
          */
         _generateUI: function() {
+            console.log('Generating Settings UI elements');
             const settings = DeathNote.getModule('settings');
             if (!settings) {
-                console.error('Settings module not available');
+                console.error('Settings module not available for UI generation');
                 return;
             }
 
             const BINS = settings.BINS;
             const definitions = settings.getAllDefinitions();
+
+            console.log(`Found ${definitions.length} setting definitions`);
 
             // Clear existing content
             this.elements.lobbySettingsContainer.innerHTML = '';
@@ -180,6 +249,8 @@
                     : bin === BINS.PLAYER
                         ? this.elements.playerSettingsContainer
                         : this.elements.gameplaySettingsContainer;
+
+                console.log(`Adding ${binSettings.length} settings to bin: ${bin}`);
 
                 binSettings.forEach(setting => {
                     const element = this._createSettingElement(setting);
@@ -260,18 +331,26 @@
                 checkboxInput.type = 'checkbox';
                 checkboxInput.id = `visible-${setting.id}`;
 
+                // Get settings module
                 const settings = DeathNote.getModule('settings');
-                // Set initial state based on relevancy and visibility rules
-                const initialVisible = settings.applySettingVisibilityRules(
+
+                // Get the current setting data
+                const settingData = settings ? settings.getAllSettings()[setting.id] || {} : {};
+
+                // Set initial state based on actual visibility
+                const initialVisible = settings ? settings.applySettingVisibilityRules(
                     setting,
-                    settings.getValue(`${setting.id}.visible`, !setting.isAdvanced)
-                );
+                    settingData.visible !== undefined ? settingData.visible : !setting.isAdvanced
+                ) : !setting.isAdvanced;
+
                 checkboxInput.checked = initialVisible;
 
                 checkboxInput.addEventListener('change', function() {
                     const settings = DeathNote.getModule('settings');
-                    settings.updateSettingVisibility(setting.id, this.checked);
-                    document.dispatchEvent(new CustomEvent('settings:changed'));
+                    if (settings && typeof settings.updateSettingVisibility === 'function') {
+                        settings.updateSettingVisibility(setting.id, this.checked);
+                        document.dispatchEvent(new CustomEvent('deathNote:settings:changed'));
+                    }
                 });
 
                 const checkboxLabel = document.createElement('label');
@@ -312,6 +391,11 @@
          */
         _createInputElement: function(setting) {
             const settings = DeathNote.getModule('settings');
+            if (!settings) {
+                console.error('Settings module not available for creating input element');
+                return document.createElement('div');
+            }
+
             const inputContainer = document.createElement('div');
             inputContainer.className = 'setting-input-container';
 
@@ -408,8 +492,10 @@
 
                         checkbox.addEventListener('change', function() {
                             const settings = DeathNote.getModule('settings');
-                            settings.updateSetting(option.id, this.checked);
-                            document.dispatchEvent(new CustomEvent('settings:changed'));
+                            if (settings) {
+                                settings.updateSetting(option.id, this.checked);
+                                document.dispatchEvent(new CustomEvent('deathNote:settings:changed'));
+                            }
                         });
 
                         const checkboxLabel = document.createElement('label');
@@ -449,8 +535,10 @@
                         valueDisplay.textContent = event.target.value;
 
                         const settings = DeathNote.getModule('settings');
-                        settings.updateSetting(setting.id, parseFloat(event.target.value));
-                        document.dispatchEvent(new CustomEvent('settings:changed'));
+                        if (settings) {
+                            settings.updateSetting(setting.id, parseFloat(event.target.value));
+                            document.dispatchEvent(new CustomEvent('deathNote:settings:changed'));
+                        }
                     });
 
                     rangeContainer.appendChild(inputElement);
@@ -487,8 +575,10 @@
                         radioInput.addEventListener('change', () => {
                             if (radioInput.checked) {
                                 const settings = DeathNote.getModule('settings');
-                                settings.updateSetting(setting.id, radioInput.value);
-                                document.dispatchEvent(new CustomEvent('settings:changed'));
+                                if (settings) {
+                                    settings.updateSetting(setting.id, radioInput.value);
+                                    document.dispatchEvent(new CustomEvent('deathNote:settings:changed'));
+                                }
                             }
                         });
 
@@ -529,8 +619,10 @@
                 const value = element.type === 'checkbox' ? element.checked : element.value;
 
                 const settings = DeathNote.getModule('settings');
-                settings.updateSetting(settingId, value);
-                document.dispatchEvent(new CustomEvent('settings:changed'));
+                if (settings) {
+                    settings.updateSetting(settingId, value);
+                    document.dispatchEvent(new CustomEvent('deathNote:settings:changed'));
+                }
             };
         },
 
@@ -568,6 +660,11 @@
          */
         _updateUIForSetting: function(settingId) {
             const settings = DeathNote.getModule('settings');
+            if (!settings) {
+                console.error('Settings module not available for UI update');
+                return;
+            }
+
             const definition = settings.getDefinition(settingId);
             if (!definition) return;
 
@@ -707,6 +804,11 @@
             if (!checkboxEl) return;
 
             const settings = DeathNote.getModule('settings');
+            if (!settings) {
+                console.error('Settings module not available for visibility sync');
+                return;
+            }
+
             const definition = settings.getDefinition(settingId);
             if (!definition) return;
 
@@ -715,38 +817,46 @@
             if (!setting) return;
 
             // Determine if the setting should be visible based on rules
+            // Use the setting's visible flag directly if available, otherwise use default
             const shouldBeVisible = settings.applySettingVisibilityRules(
                 definition,
-                setting.visible
+                setting.visible !== undefined ? setting.visible : !definition.isAdvanced
             );
 
-            // Update the checkbox state
+            // Update the checkbox state to match the current visibility
             checkboxEl.checked = shouldBeVisible;
         }
     };
 
     // Register with the UI namespace
-    DeathNote.ui.settings = SettingsUI;
+    window.DeathNote = window.DeathNote || {};
+    window.DeathNote.ui = window.DeathNote.ui || {};
+    window.DeathNote.ui.settings = SettingsUI;
 
-    // Register with the application
-    document.addEventListener('DOMContentLoaded', function() {
-        DeathNote.registerModule('ui', {
-            initialize: function() {
+    // Register the settings UI module with the application
+    const settingsUiModule = {
+        initialize: function() {
+            console.log('Settings UI module initializing via module registration');
+            SettingsUI.initialize();
+        }
+    };
+
+    // Use DeathNote's module registration
+    if (window.DeathNote && window.DeathNote.registerModule) {
+        window.DeathNote.registerModule('ui', settingsUiModule);
+    } else {
+        // Fallback registration
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, trying to register UI module');
+            if (window.DeathNote && window.DeathNote.registerModule) {
+                window.DeathNote.registerModule('ui', settingsUiModule);
+            } else {
+                console.log('Direct UI initialization fallback');
                 SettingsUI.initialize();
-
-                if (DeathNote.ui.output) {
-                    DeathNote.ui.output.initialize();
-                }
-
-                if (DeathNote.ui.recommendations) {
-                    DeathNote.ui.recommendations.initialize();
-                }
-            },
-            updateRatings: function() {
-                if (DeathNote.ui.output) {
-                    DeathNote.ui.output.updateRatings();
-                }
             }
         });
-    });
+    }
+
+    // Dispatch module registration event
+    document.dispatchEvent(new CustomEvent('deathNote:module:ui:registered'));
 })();
