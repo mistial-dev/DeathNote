@@ -292,6 +292,23 @@ window.DeathNote.ui.createInputElement = function(setting) {
             if (setting.required) {
                 inputElement.required = true;
             }
+            if (setting.maxLength) {
+                inputElement.maxLength = setting.maxLength;
+            }
+
+            // For lobby code, add validation
+            if (setting.id === 'lobbyCode') {
+                inputElement.addEventListener('input', function() {
+                    // Check if length is exactly 5 characters
+                    if (this.value.length === 5) {
+                        this.classList.remove('is-invalid');
+                        this.classList.add('is-valid');
+                    } else {
+                        this.classList.remove('is-valid');
+                        this.classList.add('is-invalid');
+                    }
+                });
+            }
 
             inputElement.addEventListener('input', function() {
                 window.DeathNote.settings.settings[setting.id].value = this.value;
@@ -643,6 +660,12 @@ window.DeathNote.ui.setupResetAllButton = function() {
                                 }
                             }
                         }
+
+                        // For lobby code, update validation UI
+                        if (definition.id === 'lobbyCode') {
+                            element.classList.remove('is-valid');
+                            element.classList.add('is-invalid');
+                        }
                     }
                 }
 
@@ -793,6 +816,14 @@ window.DeathNote.ui.resetSetting = function(settingId) {
             element.value = definition.defaultValue;
             // Trigger change event
             element.dispatchEvent(new Event('change'));
+
+            // For lobby code, update validation UI
+            if (definition.id === 'lobbyCode') {
+                element.classList.remove('is-valid');
+                if (definition.defaultValue.length !== 5) {
+                    element.classList.add('is-invalid');
+                }
+            }
         }
     }
 
@@ -864,6 +895,11 @@ window.DeathNote.ui.calculateGameBalanceRating = function() {
     // Factor 7: Low Team L progress
     if (settings.teamLProgressMultiplier && settings.teamLProgressMultiplier.value <= 0.7) {
         balanceScore -= 15;
+    }
+
+    // Factor 8: Approach Warning disabled (reduces balance)
+    if (settings.approachWarning && !settings.approachWarning.value) {
+        balanceScore -= 10;
     }
 
     // Clamp result between 0-100
@@ -949,6 +985,11 @@ window.DeathNote.ui.calculateFunRating = function() {
     // Factor 10: Day/Night seconds too short
     if (settings.dayNightSeconds && settings.dayNightSeconds.value <= 30) {
         funScore -= 10; // Penalty for very short rounds
+    }
+
+    // Factor 11: Approach Warning disabled (can be more challenging/fun for some)
+    if (settings.approachWarning && !settings.approachWarning.value) {
+        funScore += 5; // Small bonus for added challenge
     }
 
     // Clamp result between 0-100
@@ -1095,7 +1136,8 @@ window.DeathNote.ui.updateOutput = function() {
         meetingSeconds: ":speaking_head:",
         kiraProgressMultiplier: ":chart_with_upwards_trend:",
         teamLProgressMultiplier: ":detective:",
-        allowedPlayerType: ":game_die:"
+        allowedPlayerType: ":game_die:",
+        approachWarning: ":bell:" // Added emoji for approach warning
     };
 
     // Determine header theme based on settings
@@ -1115,7 +1157,6 @@ window.DeathNote.ui.updateOutput = function() {
     } else if (window.DeathNote.settings.settings.melloRole?.value === "0" ||
         window.DeathNote.settings.settings.kiraFollowerRole?.value === "0") {
         headerEmoji = ":warning:";
-        headerDecoration = "❗❗❗❗❗❗❗❗❗❗❗❗❗❗❗";
     }
 
     // Build the output markdown with Discord-friendly formatting and decorative elements

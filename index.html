@@ -89,12 +89,12 @@
                         </div>
                         <div class="mb-2 text-end">
                             <div class="d-flex align-items-center rating-container">
-                    <span id="balance-indicator" class="badge rounded-pill me-2" title="Game Balance Rating">
-                        <i class="fas fa-balance-scale me-1"></i>Balance:<span id="balance-value">/100--</span>
-                    </span>
+                                <span id="balance-indicator" class="badge rounded-pill me-2" title="Game Balance Rating">
+                                    <i class="fas fa-balance-scale me-1"></i>Balance:<span id="balance-value">/100--</span>
+                                </span>
                                 <span id="fun-indicator" class="badge rounded-pill" title="Fun Rating">
-                        <i class="fas fa-smile me-1"></i>Fun: <span id="fun-value">/100--</span>
-                    </span>
+                                    <i class="fas fa-smile me-1"></i>Fun: <span id="fun-value">/100--</span>
+                                </span>
                             </div>
                             <div class="small text-muted mt-1">
                                 Note: Balance and fun ratings are subjective estimates
@@ -122,78 +122,50 @@
 <script src="js/app.js"></script>
 
 <script>
-    // Add theme toggle functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        const themeToggle = document.getElementById('theme-toggle');
-        const htmlElement = document.documentElement;
+    // Function to update rating indicators
+    function updateRatingIndicators() {
+        if (window.DeathNote && window.DeathNote.ui) {
+            const balanceRating = window.DeathNote.ui.calculateGameBalanceRating();
+            const funRating = window.DeathNote.ui.calculateFunRating();
 
-        // Function to update rating indicators
-        function updateRatingIndicators() {
-            if (window.DeathNote && window.DeathNote.ui) {
-                const balanceRating = window.DeathNote.ui.calculateGameBalanceRating();
-                const funRating = window.DeathNote.ui.calculateFunRating();
+            const balanceElement = document.getElementById('balance-value');
+            const funElement = document.getElementById('fun-value');
+            const balanceIndicator = document.getElementById('balance-indicator');
+            const funIndicator = document.getElementById('fun-indicator');
 
-                const balanceIndicator = document.getElementById('balance-indicator');
-                const funIndicator = document.getElementById('fun-indicator');
-                const balanceValue = document.getElementById('balance-value');
-                const funValue = document.getElementById('fun-value');
+            if (balanceElement) balanceElement.textContent = balanceRating;
+            if (funElement) funElement.textContent = funRating;
 
-                if (balanceValue) balanceValue.textContent = balanceRating;
-                if (funValue) funValue.textContent = funRating;
+            // Update balance indicator styling
+            if (balanceIndicator) {
+                balanceIndicator.className = 'badge rounded-pill me-2';
 
-                // Set balance indicator color
-                if (balanceIndicator) {
-                    balanceIndicator.className = 'badge rounded-pill me-2';
-                    if (balanceRating >= 80) {
-                        balanceIndicator.classList.add('bg-success');
-                    } else if (balanceRating >= 60) {
-                        balanceIndicator.classList.add('bg-warning', 'text-dark');
-                    } else {
-                        balanceIndicator.classList.add('bg-danger');
-                    }
+                if (balanceRating >= 80) {
+                    balanceIndicator.classList.add('bg-success');
+                } else if (balanceRating >= 60) {
+                    balanceIndicator.classList.add('bg-warning', 'text-dark');
+                } else {
+                    balanceIndicator.classList.add('bg-danger');
                 }
+            }
 
-                // Set fun indicator color
-                if (funIndicator) {
-                    funIndicator.className = 'badge rounded-pill me-2';
-                    if (funRating >= 80) {
-                        funIndicator.classList.add('bg-success');
-                    } else if (funRating >= 60) {
-                        funIndicator.classList.add('bg-warning', 'text-dark');
-                    } else {
-                        funIndicator.classList.add('bg-danger');
-                    }
+            // Update fun indicator styling
+            if (funIndicator) {
+                funIndicator.className = 'badge rounded-pill me-2';
+
+                if (funRating >= 80) {
+                    funIndicator.classList.add('bg-success');
+                } else if (funRating >= 60) {
+                    funIndicator.classList.add('bg-warning', 'text-dark');
+                } else {
+                    funIndicator.classList.add('bg-danger');
                 }
             }
         }
+    }
 
-        // Check local storage for saved theme preference
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            htmlElement.setAttribute('data-bs-theme', savedTheme);
-            themeToggle.innerHTML = savedTheme === 'dark' ?
-                '<i class="fas fa-sun"></i> Light Mode' :
-                '<i class="fas fa-moon"></i> Dark Mode';
-        }
-
-        // Toggle theme on button click
-        themeToggle.addEventListener('click', function() {
-            const currentTheme = htmlElement.getAttribute('data-bs-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-            htmlElement.setAttribute('data-bs-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-
-            // Update button text
-            themeToggle.innerHTML = newTheme === 'dark' ?
-                '<i class="fas fa-sun"></i> Light Mode' :
-                '<i class="fas fa-moon"></i> Dark Mode';
-        });
-
-        // Set up update interval for ratings
-        setInterval(updateRatingIndicators, 1000);
-    });
+    // Set up interval to update ratings
+    setInterval(updateRatingIndicators, 2000);
 </script>
-
 </body>
 </html>

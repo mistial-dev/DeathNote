@@ -26,7 +26,8 @@ window.DeathNote.settings.VISIBILITY_RULES = {
     HIDE_ENABLED_CANVAS_TASKS: true,
     HIDE_DEFAULT_PROGRESS_MULTIPLIERS: true,
     HIDE_DEFAULT_DAY_NIGHT_SECONDS: true,
-    HIDE_DEFAULT_REGION: true,
+    HIDE_DEFAULT_REGION: false, // Changed to false to always show region unless deselected
+    HIDE_ENABLED_APPROACH_WARNING: true, // Added for approach warning
     CAPITALIZE_FALSE_ROLE_SELECTION: true
 };
 
@@ -53,10 +54,10 @@ window.DeathNote.settings.calculateIdealTaskCount = function (settings) {
 
     // Calculate easy and hard task counts
     const easyTaskCount = effectiveTime * 0.5 * 0.8 / (12.5 / movementSpeed + taskTime);
-    const hardTaskCount = effectiveTime * 0.9 / (12.5 / movementSpeed + taskTime);
+    const hardTaskCount = effectiveTime * 0.8 / (12.5 / movementSpeed + taskTime);
 
     // Calculate ideal task count (average of easy and hard, rounded up)
-    const idealTaskCount = Math.ceil((easyTaskCount + hardTaskCount) / 2);
+    const idealTaskCount = Math.ceil((easyTaskCount + hardTaskCount) / 2) - 1;
 
     return {
         easy: easyTaskCount, hard: hardTaskCount, ideal: idealTaskCount
@@ -77,7 +78,8 @@ window.DeathNote.settings.settingsDefinitions = [// Lobby Settings
         required: true,
         relevancyFunction: () => 0.7, // Always show as critical
         canHide: false, // Cannot be hidden
-        isAdvanced: false
+        isAdvanced: false,
+        maxLength: 5 // Added to enforce 5-character limit
     }, {
         id: "lobbyRegion",
         name: "Lobby Region",
@@ -95,7 +97,7 @@ window.DeathNote.settings.settingsDefinitions = [// Lobby Settings
         description: "Privacy settings for the lobby",
         bin: window.DeathNote.settings.BINS.LOBBY,
         type: "select",
-        options: ["Public", "Private"],
+        options: ["Public", "Private", "Private, then Public"],
         defaultValue: "Public",
         relevancyFunction: () => 0.7, // Always important
         canHide: true,
@@ -140,6 +142,18 @@ window.DeathNote.settings.settingsDefinitions = [// Lobby Settings
         relevancyFunction: (value) => value ? 0.1 : 0.7, // Only highlight when disabled
         canHide: true,
         isAdvanced: true // Move to advanced settings
+    },
+    // Added Approach Warning setting
+    {
+        id: "approachWarning",
+        name: "Approach Warning",
+        description: "If enabled, players will receive a warning when another player approaches",
+        bin: window.DeathNote.settings.BINS.LOBBY,
+        type: "boolean",
+        defaultValue: true,
+        relevancyFunction: (value) => value ? 0.1 : 0.8, // High relevancy when disabled
+        canHide: true,
+        isAdvanced: false
     },
 
     // Player Settings
@@ -236,7 +250,7 @@ window.DeathNote.settings.settingsDefinitions = [// Lobby Settings
         defaultValue: 2, // Formula: Clamp(1.0 * |N - T_ideal|^2, 0, 1)
         relevancyFunction: (value, allSettings) => {
             const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(allSettings);
-            return Math.min(1.0, Math.max(0.0, 1.0 * Math.pow(Math.abs(value - taskCounts.ideal), 2)));
+            return Math.min(0.7, Math.max(0.0, 0.7 * Math.pow(Math.abs(value - taskCounts.ideal), 2)));
         },
         canHide: true,
         isAdvanced: false
@@ -770,6 +784,11 @@ window.DeathNote.settings.applySettingVisibilityRules = function (definition, is
         return false;
     }
 
+    // Hide approach warning when enabled (default)
+    if (VISIBILITY_RULES.HIDE_ENABLED_APPROACH_WARNING && definition.id === "approachWarning" && settings[definition.id].value === true) {
+        return false;
+    }
+
     // Hide progress multipliers at default value
     if (VISIBILITY_RULES.HIDE_DEFAULT_PROGRESS_MULTIPLIERS && (definition.id === "kiraProgressMultiplier" || definition.id === "teamLProgressMultiplier") && settings[definition.id].value === 1.0) {
         return false;
@@ -780,7 +799,7 @@ window.DeathNote.settings.applySettingVisibilityRules = function (definition, is
         return false;
     }
 
-    // Hide default region
+    // Hide default region - changed to false in constants, this rule is disabled now
     if (VISIBILITY_RULES.HIDE_DEFAULT_REGION && definition.id === "lobbyRegion" && settings[definition.id].value === "America (East)") {
         return false;
     }

@@ -7,78 +7,210 @@
 window.DeathNote = window.DeathNote || {};
 window.DeathNote.recommendations = window.DeathNote.recommendations || {};
 
+// Define recommendation groups to avoid duplicates
+window.DeathNote.recommendations.GROUPS = {
+    TASK_COUNT: "task_count",
+    ROLE_AVAILABILITY: "role_availability",
+    ROUND_SETTINGS: "round_settings",
+    PLAYER_SETTINGS: "player_settings",
+    KIRA_BALANCE: "kira_balance",
+    PLATFORM_SETTINGS: "platform_settings",
+    VOICE_SETTINGS: "voice_settings",
+    CANVAS_SETTINGS: "canvas_settings",
+    PROGRESS_SETTINGS: "progress_settings"
+};
+
+// Helper function to safely check if a setting exists and has a specific value
+function hasSetting(settings, name, value) {
+    return settings && settings[name] && settings[name].value === value;
+}
+
+// Helper function to safely check if a setting exists
+function settingExists(settings, name) {
+    return settings && settings[name] && settings[name].value !== undefined;
+}
+
+// Helper function to safely get a setting value with default
+function getSettingValue(settings, name, defaultValue) {
+    if (settings && settings[name] && settings[name].value !== undefined) {
+        return settings[name].value;
+    }
+    return defaultValue;
+}
+
 // Array of recommendation objects
 window.DeathNote.recommendations.recommendations = [
+    // Recommendation for very low task count (highest priority in TASK_COUNT group)
+    {
+        id: "veryLowTaskCount",
+        group: window.DeathNote.recommendations.GROUPS.TASK_COUNT,
+        priority: 10, // Highest priority in this group
+        condition: (settings) => {
+            return hasSetting(settings, "numberOfTasks", 1);
+        },
+        message: (settings) => {
+            return `Only 1 task? That's like giving L a single clue to find Kira! Players will complete it quickly and have nothing to do. Consider adding more tasks to keep everyone engaged!`;
+        }
+    },
+
     // Recommendation 1: Too Few Tasks (Risk of Boredom)
     {
         id: "tooFewTasks",
+        group: window.DeathNote.recommendations.GROUPS.TASK_COUNT,
+        priority: 5,
         condition: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            return settings.numberOfTasks.value < taskCounts.ideal;
+            if (!settingExists(settings, "numberOfTasks")) return false;
+
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+
+            // Only proceed if we can calculate ideal task count
+            if (typeof window.DeathNote.settings.calculateIdealTaskCount !== 'function') {
+                return false;
+            }
+
+            try {
+                const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                return taskCount < taskCounts.ideal && taskCount > 1;
+            } catch (e) {
+                console.error("Error calculating ideal task count:", e);
+                return false;
+            }
         },
         message: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            const suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal)); // Clamp between 1-8
-            return `Only ${settings.numberOfTasks.value} tasks? Players might get more bored than L during a sugar shortage! 😴 With Kira's timer extensions, they'll have more downtime than a death god on vacation. Consider trying ${suggestedTasks} tasks to keep everyone occupied!`;
+            // Safely calculate task counts or use defaults
+            let suggestedTasks = 4;
+            try {
+                if (typeof window.DeathNote.settings.calculateIdealTaskCount === 'function') {
+                    const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                    suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal));
+                }
+            } catch (e) {
+                console.error("Error calculating task count for message:", e);
+            }
+
+            return `Consider trying ${suggestedTasks} tasks to keep players occupied! With Kira's timer extensions, they might have more downtime than desired.`;
         }
     },
 
     // Recommendation 2: Too Many Tasks (Risk of Overwhelm)
     {
         id: "tooManyTasks",
+        group: window.DeathNote.recommendations.GROUPS.TASK_COUNT,
+        priority: 5,
         condition: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            return settings.numberOfTasks.value > taskCounts.hard + 1 &&
-                (settings.numberOfTasks.value / (taskCounts.hard + 1) > 1.25); // 75% chance not to complete
+            if (!settingExists(settings, "numberOfTasks")) return false;
+
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+
+            // Only proceed if we can calculate ideal task count
+            if (typeof window.DeathNote.settings.calculateIdealTaskCount !== 'function') {
+                return false;
+            }
+
+            try {
+                const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                return taskCount > taskCounts.hard + 1 && (taskCount / (taskCounts.hard + 1) > 1.25);
+            } catch (e) {
+                console.error("Error calculating ideal task count:", e);
+                return false;
+            }
         },
         message: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            const suggestedTasks = Math.min(8, Math.max(1, taskCounts.hard)); // Clamp between 1-8
-            const suggestedTasksAlt = Math.min(8, Math.max(1, taskCounts.hard + 1)); // Alternative
-            return `Whoa, ${settings.numberOfTasks.value} tasks? That's more overwhelming than Light's college entrance exams! 📚 Players might give up faster than Matsuda at a crime scene. Maybe try ${suggestedTasks} or ${suggestedTasksAlt} tasks for a challenge that won't make them rage quit!`;
+            // Safely calculate task counts or use defaults
+            let suggestedTasks = 4;
+            let suggestedTasksAlt = 5;
+
+            try {
+                if (typeof window.DeathNote.settings.calculateIdealTaskCount === 'function') {
+                    const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                    suggestedTasks = Math.min(8, Math.max(1, Math.round(taskCounts.hard)));
+                    suggestedTasksAlt = Math.min(8, Math.max(1, Math.round(taskCounts.hard + 1)));
+                }
+            } catch (e) {
+                console.error("Error calculating task count for message:", e);
+            }
+
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+            return `${taskCount} tasks might be overwhelming! Players might give up. Try ${suggestedTasks} or ${suggestedTasksAlt} for a challenge that won't make them rage quit!`;
         }
     },
 
     // Recommendation 3: Low Movement Speed with High Task Count
     {
         id: "lowSpeedHighTasks",
+        group: window.DeathNote.recommendations.GROUPS.ROUND_SETTINGS,
+        priority: 7,
         condition: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            return settings.movementSpeed.value < 0.8 &&
-                settings.numberOfTasks.value > taskCounts.ideal + 1;
+            if (!settingExists(settings, "movementSpeed") || !settingExists(settings, "numberOfTasks")) {
+                return false;
+            }
+
+            const speed = getSettingValue(settings, "movementSpeed", 1.0);
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+
+            // Only proceed if we can calculate ideal task count
+            if (typeof window.DeathNote.settings.calculateIdealTaskCount !== 'function') {
+                return false;
+            }
+
+            try {
+                const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                return speed < 0.8 && taskCount > taskCounts.ideal + 1;
+            } catch (e) {
+                console.error("Error calculating ideal task count:", e);
+                return false;
+            }
         },
         message: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            const suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal)); // Clamp between 1-8
-            return `Movement speed ${settings.movementSpeed.value} with ${settings.numberOfTasks.value} tasks? Players will move slower than Watari after an all-nighter! 🐢 They'll struggle more than Near trying to build a card tower in a hurricane. Either speed 'em up to 1.0 or try reducing tasks to around ${suggestedTasks} for a smoother game!`;
+            // Safely calculate task counts or use defaults
+            let suggestedTasks = 3;
+            try {
+                if (typeof window.DeathNote.settings.calculateIdealTaskCount === 'function') {
+                    const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                    suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal));
+                }
+            } catch (e) {
+                console.error("Error calculating task count for message:", e);
+            }
+
+            const speed = getSettingValue(settings, "movementSpeed", 1.0);
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+
+            return `Movement speed ${speed} with ${taskCount} tasks? Players will struggle to get around in time. Either speed up to 1.0 or reduce tasks to ${suggestedTasks} for smoother gameplay.`;
         }
     },
 
     // Add recommendation for non-US East regions
     {
         id: "nonDefaultRegion",
+        group: window.DeathNote.recommendations.GROUPS.PLAYER_SETTINGS,
+        priority: 2,
         condition: (settings) => {
-            return settings.lobbyRegion && settings.lobbyRegion.value !== "America (East)";
+            return settingExists(settings, "lobbyRegion") &&
+                getSettingValue(settings, "lobbyRegion", "America (East)") !== "America (East)";
         },
         message: (settings) => {
-            return `Playing in ${settings.lobbyRegion.value}? Bold choice! Just a friendly heads-up: servers outside US East might take a bit longer to fill up. Think of it as extra time to practice your Kira laugh! 😈`;
+            const region = getSettingValue(settings, "lobbyRegion", "America (East)");
+            return `Playing in ${region}? Just a heads-up: servers outside US East might take a bit longer to fill up.`;
         }
     },
 
     // Add recommendation for restricted platform types
     {
         id: "restrictedPlatformTypes",
+        group: window.DeathNote.recommendations.GROUPS.PLATFORM_SETTINGS,
+        priority: 8,
         condition: (settings) => {
-            return (settings.pcAllowed && !settings.pcAllowed.value) ||
-                (settings.ps4Allowed && !settings.ps4Allowed.value);
+            return (settingExists(settings, "pcAllowed") && !getSettingValue(settings, "pcAllowed", true)) ||
+                (settingExists(settings, "ps4Allowed") && !getSettingValue(settings, "ps4Allowed", true));
         },
         message: (settings) => {
             let message = "<span style='color: #721c24;'>";
 
-            if (settings.pcAllowed && !settings.pcAllowed.value) {
-                message += "Banning PC players? Bold move, cotton! 🧐 Many PC folks don't cheat, and you're cutting your player pool in half. Like judging all Kiras by Light Yagami's standards!";
-            } else if (settings.ps4Allowed && !settings.ps4Allowed.value) {
-                message += "Console players banned? That's cold! 🥶 PS4 players make up a huge chunk of the player base. Your lobby might be emptier than L's candy jar!";
+            if (settingExists(settings, "pcAllowed") && !getSettingValue(settings, "pcAllowed", true)) {
+                message += "Banning PC players cuts your player pool in half. Many PC folks don't cheat!";
+            } else if (settingExists(settings, "ps4Allowed") && !getSettingValue(settings, "ps4Allowed", true)) {
+                message += "Console players banned? PS4 players make up a huge chunk of the player base. Your lobby might fill more slowly!";
             }
 
             message += "</span>";
@@ -89,209 +221,354 @@ window.DeathNote.recommendations.recommendations = [
     // Recommendation 4: Mello Disabled
     {
         id: "melloDisabled",
+        group: window.DeathNote.recommendations.GROUPS.ROLE_AVAILABILITY,
+        priority: 9,
         condition: (settings) => {
-            return settings.melloRole && settings.melloRole.value === "0";
+            return hasSetting(settings, "melloRole", "0");
         },
         message: () => {
-            return "<span class='warning-text'><strong>No Mello in your lobby?</strong> That's like Death Note without chocolate! 🍫 Players LOVE this role and might bail faster than Light ditches girlfriends. Maybe reconsider?</span>";
+            return "<span class='warning-text'><strong>No Mello in your lobby?</strong> Players LOVE this role and might leave quickly. Consider enabling it!</span>";
         }
     },
 
     // Recommendation 5: Kira Without a Follower
     {
         id: "noKiraFollower",
+        group: window.DeathNote.recommendations.GROUPS.ROLE_AVAILABILITY,
+        priority: 8,
         condition: (settings) => {
-            return settings.kiraFollowerRole && settings.kiraFollowerRole.value === "0";
+            return hasSetting(settings, "kiraFollowerRole", "0");
         },
         message: (settings) => {
             // Red warning if >= 6 players, regular otherwise
-            const isHighPlayerCount = settings.maximumPlayers && settings.maximumPlayers.value >= 6;
+            const playerCount = getSettingValue(settings, "maximumPlayers", 10);
+            const isHighPlayerCount = playerCount >= 6;
             const warningClass = isHighPlayerCount ? "warning-text" : "";
-            return `<span class='${warningClass}'>Poor Kira has no sidekick! 😢 Even evil masterminds need a friend. ${isHighPlayerCount ? 'With ' + settings.maximumPlayers.value + ' players, Kira\'s gonna have a harder time than L at a cake-eating contest.' : 'Players might ghost the lobby faster than Mikami abandons a losing battle!'} Consider adding a Follower?</span>`;
+            return `<span class='${warningClass}'>Poor Kira has no sidekick! ${isHighPlayerCount ? 'With ' + playerCount + ' players, Kira will have a harder time.' : 'Players might leave the lobby quickly!'} Consider adding a Follower.</span>`;
         }
     },
 
     // Recommendation 6: Short Rounds with High Inputs
     {
         id: "shortRoundsHighInputs",
+        group: window.DeathNote.recommendations.GROUPS.ROUND_SETTINGS,
+        priority: 6,
         condition: (settings) => {
-            return settings.dayNightSeconds && settings.numberOfInputs &&
-                settings.dayNightSeconds.value <= 45 &&
-                settings.numberOfInputs.value >= 4;
+            return settingExists(settings, "dayNightSeconds") &&
+                settingExists(settings, "numberOfInputs") &&
+                getSettingValue(settings, "dayNightSeconds", 45) <= 45 &&
+                getSettingValue(settings, "numberOfInputs", 2) >= 4;
         },
         message: (settings) => {
-            return `${settings.dayNightSeconds.value} seconds with ${settings.numberOfInputs.value} inputs? That's more rushed than Ryuk when apples are on sale! ⏱️ Players might complete fewer tasks than Light on a potato chip binge. Try dropping inputs to 2-3 or extend rounds to 60+ seconds for a better pace!`;
+            const seconds = getSettingValue(settings, "dayNightSeconds", 45);
+            const inputs = getSettingValue(settings, "numberOfInputs", 2);
+            return `${seconds} seconds with ${inputs} inputs is rushed! Try dropping inputs to 2-3 or extend rounds to 60+ seconds for a better pace.`;
         }
     },
 
     // Recommendation 7: Long Rounds with Low Tasks and High Speed
     {
         id: "longRoundsLowTasksHighSpeed",
+        group: window.DeathNote.recommendations.GROUPS.ROUND_SETTINGS,
+        priority: 5,
         condition: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            return settings.dayNightSeconds && settings.numberOfTasks && settings.movementSpeed &&
-                settings.dayNightSeconds.value >= 120 &&
-                settings.numberOfTasks.value < taskCounts.ideal &&
-                settings.movementSpeed.value >= 1.2;
+            if (!settingExists(settings, "dayNightSeconds") ||
+                !settingExists(settings, "numberOfTasks") ||
+                !settingExists(settings, "movementSpeed")) {
+                return false;
+            }
+
+            const seconds = getSettingValue(settings, "dayNightSeconds", 45);
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+            const speed = getSettingValue(settings, "movementSpeed", 1.0);
+
+            // Only proceed if we can calculate ideal task count
+            if (typeof window.DeathNote.settings.calculateIdealTaskCount !== 'function') {
+                return false;
+            }
+
+            try {
+                const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                return seconds >= 120 && taskCount < taskCounts.ideal && speed >= 1.2;
+            } catch (e) {
+                console.error("Error calculating ideal task count:", e);
+                return false;
+            }
         },
         message: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            const suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal)); // Clamp between 1-8
-            return `Long ${settings.dayNightSeconds.value}-second rounds, zippy ${settings.movementSpeed.value} speed, but only ${settings.numberOfTasks.value} tasks? 🥱 Players will have more downtime than Ryuk watching humans from the Shinigami realm! Even with Kira's tricks, consider bumping tasks up to around ${suggestedTasks} to keep things interesting!`;
+            let suggestedTasks = 3;
+            try {
+                if (typeof window.DeathNote.settings.calculateIdealTaskCount === 'function') {
+                    const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                    suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal));
+                }
+            } catch (e) {
+                console.error("Error calculating task count for message:", e);
+            }
+
+            const seconds = getSettingValue(settings, "dayNightSeconds", 45);
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+            const speed = getSettingValue(settings, "movementSpeed", 1.0);
+
+            return `Long ${seconds}s rounds, ${speed} speed, but only ${taskCount} tasks? Players will have too much downtime. Consider adding tasks (${suggestedTasks}) to keep them engaged.`;
         }
     },
 
     // Recommendation 8: High Player Count with Low Tasks
     {
         id: "highPlayerCountLowTasks",
+        group: window.DeathNote.recommendations.GROUPS.TASK_COUNT,
+        priority: 7,
         condition: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            return settings.maximumPlayers && settings.numberOfTasks &&
-                settings.maximumPlayers.value >= 8 &&
-                settings.numberOfTasks.value < taskCounts.ideal;
-        },
-        message: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            const suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal)); // Clamp between 1-8
-            return `${settings.maximumPlayers.value} players but only ${settings.numberOfTasks.value} tasks? That's more crowded than the Task Force HQ with nothing to do! 👥 More players = higher chance of thumb-twiddling. With this many players, you'll have lots of folks standing around waiting. Try adding tasks (around ${suggestedTasks}) before players get bored enough to start writing each other's names in notebooks!`;
-        }
-    },
+            if (!settingExists(settings, "maximumPlayers") || !settingExists(settings, "numberOfTasks")) {
+                return false;
+            }
 
-    // Recommendation for very low task count
-    {
-        id: "veryLowTaskCount",
-        condition: (settings) => {
-            return settings.numberOfTasks && settings.numberOfTasks.value === 1;
+            const playerCount = getSettingValue(settings, "maximumPlayers", 10);
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+
+            // Only proceed if we can calculate ideal task count
+            if (typeof window.DeathNote.settings.calculateIdealTaskCount !== 'function') {
+                return false;
+            }
+
+            try {
+                const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                return playerCount >= 8 && taskCount < taskCounts.ideal;
+            } catch (e) {
+                console.error("Error calculating ideal task count:", e);
+                return false;
+            }
         },
         message: (settings) => {
-            return `Only 1 task? That's like giving L a single clue to find Kira! 🔍 Players will complete it quickly and then have nothing to do but anxiously wait. The more players you have, the more people will be twiddling their thumbs. Consider adding at least one more task to keep everyone engaged!`;
+            let suggestedTasks = 3;
+            try {
+                if (typeof window.DeathNote.settings.calculateIdealTaskCount === 'function') {
+                    const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                    suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal));
+                }
+            } catch (e) {
+                console.error("Error calculating task count for message:", e);
+            }
+
+            const playerCount = getSettingValue(settings, "maximumPlayers", 10);
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+
+            return `${taskCount} tasks is a bit low for the day/night cycle time. Try adding tasks (around ${suggestedTasks}) to keep everyone engaged.`;
         }
     },
 
     // Recommendation 9: Voice Chat Disabled with Complex Settings
     {
         id: "noVoiceChatComplexSettings",
+        group: window.DeathNote.recommendations.GROUPS.VOICE_SETTINGS,
+        priority: 5,
         condition: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            return settings.voiceChat && settings.numberOfTasks && settings.numberOfInputs &&
-                settings.melloRole && settings.kiraFollowerRole &&
-                !settings.voiceChat.value &&
-                (settings.numberOfTasks.value > taskCounts.hard ||
-                    settings.numberOfInputs.value >= 4 ||
-                    settings.melloRole.value === "random" ||
-                    settings.kiraFollowerRole.value === "random");
+            if (!settingExists(settings, "voiceChat") ||
+                !settingExists(settings, "numberOfTasks") ||
+                !settingExists(settings, "numberOfInputs") ||
+                !settingExists(settings, "melloRole") ||
+                !settingExists(settings, "kiraFollowerRole")) {
+                return false;
+            }
+
+            const voiceChat = getSettingValue(settings, "voiceChat", true);
+            const taskCount = getSettingValue(settings, "numberOfTasks", 2);
+            const inputCount = getSettingValue(settings, "numberOfInputs", 2);
+            const melloRole = getSettingValue(settings, "melloRole", "1");
+            const kiraFollowerRole = getSettingValue(settings, "kiraFollowerRole", "1");
+
+            // Only proceed if we can calculate ideal task count
+            if (typeof window.DeathNote.settings.calculateIdealTaskCount !== 'function') {
+                return false;
+            }
+
+            try {
+                const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                return !voiceChat &&
+                    (taskCount > taskCounts.hard ||
+                        inputCount >= 4 ||
+                        melloRole === "random" ||
+                        kiraFollowerRole === "random");
+            } catch (e) {
+                console.error("Error calculating ideal task count:", e);
+                return false;
+            }
         },
         message: (settings) => {
-            const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
-            const suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal)); // Clamp between 1-8
-            return `No voice chat with complex settings? That's more chaotic than the Yotsuba Group meetings! 🔇 Players will be as confused as Light with amnesia. Either turn on the mics or simplify (try ${suggestedTasks} tasks, 2-3 inputs) for clearer teamwork!`;
+            let suggestedTasks = 3;
+            try {
+                if (typeof window.DeathNote.settings.calculateIdealTaskCount === 'function') {
+                    const taskCounts = window.DeathNote.settings.calculateIdealTaskCount(settings);
+                    suggestedTasks = Math.min(8, Math.max(1, taskCounts.ideal));
+                }
+            } catch (e) {
+                console.error("Error calculating task count for message:", e);
+            }
+
+            return `No voice chat with complex settings might be chaotic. Either enable voice chat or simplify (try ${suggestedTasks} tasks, 2-3 inputs) for clearer teamwork.`;
         }
     },
 
     // Recommendation 10: Canvas Tasks Disabled (stronger warning)
     {
         id: "canvasTasksDisabled",
+        group: window.DeathNote.recommendations.GROUPS.CANVAS_SETTINGS,
+        priority: 9,
         condition: (settings) => {
-            return settings.canvasTasks && !settings.canvasTasks.value;
+            return settingExists(settings, "canvasTasks") && !getSettingValue(settings, "canvasTasks", true);
         },
         message: () => {
-            return "<span class='warning-text'><strong>Canvas Tasks are disabled!</strong> Team Kira will struggle to blend in! 🎭 Investigators can use NPC feedback to easily track Kira's movements. This often leads to frustrated Kira players and an un-fun meta. Consider enabling Canvas Tasks for a better experience.</span>";
+            return "<span class='warning-text'><strong>Canvas Tasks are disabled!</strong> Team Kira will struggle to blend in. Investigators can easily track Kira, leading to frustrated players. Consider enabling Canvas Tasks.</span>";
         }
     },
 
     // Recommendation 11: Unbalanced Progress Multipliers
     {
         id: "unbalancedProgressMultipliers",
+        group: window.DeathNote.recommendations.GROUPS.PROGRESS_SETTINGS,
+        priority: 8,
         condition: (settings) => {
-            return settings.kiraProgressMultiplier && settings.teamLProgressMultiplier &&
-                Math.abs(settings.kiraProgressMultiplier.value - settings.teamLProgressMultiplier.value) > 0.5;
+            return settingExists(settings, "kiraProgressMultiplier") &&
+                settingExists(settings, "teamLProgressMultiplier") &&
+                Math.abs(getSettingValue(settings, "kiraProgressMultiplier", 1.0) -
+                    getSettingValue(settings, "teamLProgressMultiplier", 1.0)) > 0.5;
         },
         message: (settings) => {
-            return `Kira's progress at ${(settings.kiraProgressMultiplier.value * 100).toFixed(0)}% and L's at ${(settings.teamLProgressMultiplier.value * 100).toFixed(0)}%? That's more unbalanced than Light's mental state! ⚖️ A gap over 50% feels like playing different games. Consider evening them out so neither side feels like they're fighting Takada's bodyguards!`;
+            const kiraProgress = getSettingValue(settings, "kiraProgressMultiplier", 1.0);
+            const teamLProgress = getSettingValue(settings, "teamLProgressMultiplier", 1.0);
+
+            return `Kira's progress at ${(kiraProgress * 100).toFixed(0)}% and L's at ${(teamLProgress * 100).toFixed(0)}%? A gap over 50% feels unbalanced. Consider evening them out for fairer gameplay.`;
         }
     },
 
     // Recommendation 12: Low New World Progress (Stale Meta)
     {
         id: "lowNewWorldProgress",
+        group: window.DeathNote.recommendations.GROUPS.PROGRESS_SETTINGS,
+        priority: 6,
         condition: (settings) => {
-            return settings.kiraProgressMultiplier && settings.kiraProgressMultiplier.value < 1.4;
+            return settingExists(settings, "kiraProgressMultiplier") &&
+                getSettingValue(settings, "kiraProgressMultiplier", 1.0) < 1.4;
         },
         message: (settings) => {
-            return `Kira's progress at a measly ${(settings.kiraProgressMultiplier.value * 100).toFixed(0)}%? Players will huddle up and skip tasks like they're dodging Misa's deadly cooking skills! 🍳 Consider boosting it to 140% or 150% to give Kira some edge and get everyone running around like Matsuda at a crime scene!`;
+            const kiraProgress = getSettingValue(settings, "kiraProgressMultiplier", 1.0);
+
+            return `Kira's progress at only ${(kiraProgress * 100).toFixed(0)}%? Players may group up and skip tasks. Consider boosting to 140-150% to encourage movement.`;
         }
     },
 
     // Recommendation 13: High New World Progress with Excessive Criminal Judgments
     {
         id: "highProgressExcessiveJudgments",
+        group: window.DeathNote.recommendations.GROUPS.KIRA_BALANCE,
+        priority: 7,
         condition: (settings) => {
-            return settings.kiraProgressMultiplier && settings.maximumCriminalJudgments &&
-                settings.kiraProgressMultiplier.value >= 1.4 &&
-                settings.maximumCriminalJudgments.value > 5;
+            return settingExists(settings, "kiraProgressMultiplier") &&
+                settingExists(settings, "maximumCriminalJudgments") &&
+                getSettingValue(settings, "kiraProgressMultiplier", 1.0) >= 1.4 &&
+                getSettingValue(settings, "maximumCriminalJudgments", 5) > 5;
         },
         message: (settings) => {
-            return `Kira at ${(settings.kiraProgressMultiplier.value * 100).toFixed(0)}% progress with ${settings.maximumCriminalJudgments.value} judgments? That's more overpowered than Light with Rem's help! 💪 Kira will win faster than L can say "cake." Consider keeping judgments at 5 so others stand a chance!`;
+            const kiraProgress = getSettingValue(settings, "kiraProgressMultiplier", 1.0);
+            const judgments = getSettingValue(settings, "maximumCriminalJudgments", 5);
+
+            return `Kira at ${(kiraProgress * 100).toFixed(0)}% progress with ${judgments} judgments gives Kira too much power. Consider keeping judgments at 5 for better balance.`;
         }
     },
 
     // Warning for Black Notebooks + High Criminal Judgments (Advanced Playstyle)
     {
         id: "advancedKiraPlaystyle",
+        group: window.DeathNote.recommendations.GROUPS.KIRA_BALANCE,
+        priority: 8,
         condition: (settings) => {
-            return settings.haveBlackNotebooks && settings.haveBlackNotebooks.value &&
-                settings.maximumCriminalJudgments && settings.maximumCriminalJudgments.value > 5;
+            return settingExists(settings, "haveBlackNotebooks") &&
+                settingExists(settings, "maximumCriminalJudgments") &&
+                getSettingValue(settings, "haveBlackNotebooks", false) &&
+                getSettingValue(settings, "maximumCriminalJudgments", 5) > 5;
         },
         message: (settings) => {
-            if (settings.canvasTasks && !settings.canvasTasks.value &&
-                settings.maximumCriminalJudgments.value >= 7) {
+            const judgments = getSettingValue(settings, "maximumCriminalJudgments", 5);
+
+            if (settingExists(settings, "canvasTasks") &&
+                !getSettingValue(settings, "canvasTasks", true) &&
+                judgments >= 7) {
                 // Easter egg for the extreme setup
-                return "<span style='color: #721c24;'>Are you actually Osamu Dazai in disguise? 🧐 Canvas Tasks off, Black Notebooks on, AND " + settings.maximumCriminalJudgments.value + " criminal judgments? This is more chaotic than Ryuk after eating fermented apples! Investigators will need supernatural detective skills just to have a chance. Are you perhaps trying to create the perfect crime?</span>";
+                return "<span style='color: #721c24;'>Canvas Tasks off, Black Notebooks on, AND " + judgments + " criminal judgments creates an extremely difficult environment for investigators.</span>";
             }
 
-            return "<span style='color: #721c24;'>Black Notebooks with " + settings.maximumCriminalJudgments.value + " criminal judgments is an advanced playstyle! 📓 Some players will find it extremely challenging to identify Kira. If your lobby has newbies, they might get as confused as Matsuda at... well, anywhere.</span>";
+            return "<span style='color: #721c24;'>Black Notebooks with " + judgments + " criminal judgments is an advanced playstyle! Some players will find it challenging to identify Kira.</span>";
         }
     },
 
     // Warning for very short round times
     {
         id: "veryShortRounds",
+        group: window.DeathNote.recommendations.GROUPS.ROUND_SETTINGS,
+        priority: 6,
         condition: (settings) => {
-            return settings.dayNightSeconds && settings.dayNightSeconds.value <= 30;
+            return settingExists(settings, "dayNightSeconds") &&
+                getSettingValue(settings, "dayNightSeconds", 45) <= 30;
         },
         message: (settings) => {
-            return `${settings.dayNightSeconds.value}-second rounds? That's shorter than L's patience for sweets thieves! ⏱️ Players will be rushing around like Mikami late to court. Hope they enjoy speed-running their tasks like they're trying to beat Near to a conclusion!`;
+            const seconds = getSettingValue(settings, "dayNightSeconds", 45);
+            return `${seconds}-second rounds are very short! Players will be rushing to complete tasks in time.`;
         }
     },
 
     // Warning for very short meeting times
     {
         id: "veryShortMeetings",
+        group: window.DeathNote.recommendations.GROUPS.ROUND_SETTINGS,
+        priority: 5,
         condition: (settings) => {
-            return settings.meetingSeconds && settings.meetingSeconds.value <= 45;
+            return settingExists(settings, "meetingSeconds") &&
+                getSettingValue(settings, "meetingSeconds", 150) <= 45;
         },
         message: (settings) => {
-            return `Only ${settings.meetingSeconds.value} seconds for meetings? That's barely enough time to say "I am L"! 🗣️ Players will need to make decisions faster than Light writes names in the Death Note. Hope no one needs time to explain their alibi!`;
+            const seconds = getSettingValue(settings, "meetingSeconds", 150);
+            return `Only ${seconds} seconds for meetings is very brief. Players will need to make quick decisions without much discussion time.`;
         }
     },
 
     // Recommendation 14: Default Inputs (2) Recommendation
     {
         id: "defaultInputsRecommendation",
+        group: window.DeathNote.recommendations.GROUPS.PLAYER_SETTINGS,
+        priority: 3,
         condition: (settings) => {
+            if (!settingExists(settings, "numberOfInputs")) return false;
+
             // Count non-default settings to make this less likely to trigger when other things are interesting
             let nonDefaultCount = 0;
             for (const key in settings) {
-                const def = window.DeathNote.settings.settingsDefinitions.find(d => d.id === key);
-                if (def && settings[key].value !== def.defaultValue && key !== "numberOfInputs") {
-                    nonDefaultCount++;
+                if (key !== "numberOfInputs" && settingExists(settings, key)) {
+                    const def = window.DeathNote.settings.settingsDefinitions.find(d => d.id === key);
+                    if (def && settings[key].value !== def.defaultValue) {
+                        nonDefaultCount++;
+                    }
                 }
             }
 
-            return settings.numberOfInputs && settings.numberOfInputs.value === 2 && nonDefaultCount < 3;
+            return getSettingValue(settings, "numberOfInputs", 2) === 2 && nonDefaultCount < 3;
         },
         message: () => {
-            return "Two inputs per task might be simpler than Matsuda's detective skills! 🤔 Consider bumping to 3-4 for more engaging gameplay, especially for your veteran death note wielders!";
+            return "Two inputs per task is relatively simple. Consider bumping to 3-4 for more engaging gameplay, especially for veteran players!";
+        }
+    },
+
+    // Approach Warning Disabled
+    {
+        id: "approachWarningDisabled",
+        group: window.DeathNote.recommendations.GROUPS.PLAYER_SETTINGS,
+        priority: 7,
+        condition: (settings) => {
+            return settingExists(settings, "approachWarning") &&
+                !getSettingValue(settings, "approachWarning", true);
+        },
+        message: () => {
+            return "<span class='warning-text'>Approach Warning disabled! Players won't know when others are nearby, making it easier for Kira to catch targets unaware.</span>";
         }
     }
 ];
@@ -301,14 +578,8 @@ window.DeathNote.recommendations.getActiveRecommendations = function(settings) {
     // For debugging, log the settings
     console.log("Checking recommendations with settings:", settings);
 
-    // Specifically log the melloRole setting to debug
-    if (settings.melloRole) {
-        console.log("melloRole setting:", settings.melloRole.value);
-    } else {
-        console.log("melloRole setting not found in settings object");
-    }
-
-    return window.DeathNote.recommendations.recommendations.filter(recommendation => {
+    // Get all recommendations that meet their conditions
+    const validRecommendations = window.DeathNote.recommendations.recommendations.filter(recommendation => {
         try {
             // Debug each recommendation condition
             const conditionResult = recommendation.condition(settings);
@@ -318,7 +589,28 @@ window.DeathNote.recommendations.getActiveRecommendations = function(settings) {
             console.error(`Error evaluating condition for recommendation '${recommendation.id}':`, error);
             return false;
         }
-    }).map(recommendation => ({
+    });
+
+    // Group recommendations by their group
+    const groupedRecommendations = {};
+    validRecommendations.forEach(rec => {
+        if (!groupedRecommendations[rec.group]) {
+            groupedRecommendations[rec.group] = [];
+        }
+        groupedRecommendations[rec.group].push(rec);
+    });
+
+    // For each group, select only the highest priority recommendation
+    const filteredRecommendations = [];
+    for (const group in groupedRecommendations) {
+        // Sort by priority (higher number = higher priority)
+        const sortedGroup = groupedRecommendations[group].sort((a, b) => b.priority - a.priority);
+        // Take only the highest priority one
+        filteredRecommendations.push(sortedGroup[0]);
+    }
+
+    // Map to the expected format
+    return filteredRecommendations.map(recommendation => ({
         id: recommendation.id,
         message: recommendation.message(settings)
     }));
@@ -345,7 +637,7 @@ window.DeathNote.recommendations.updateRecommendations = function() {
     recommendationsContainer.innerHTML = '';
 
     if (activeRecommendations.length === 0) {
-        recommendationsContainer.innerHTML = '<p class="text-muted">No recommendations at this time. Your settings look more perfect than Light\'s handwriting!</p>';
+        recommendationsContainer.innerHTML = '<p class="text-muted">No recommendations at this time. Your settings look good!</p>';
         return;
     }
 
